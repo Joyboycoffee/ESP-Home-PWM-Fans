@@ -16,8 +16,6 @@ Short: silent MOSFET-based high-side fan controller driven by ESP (ESP32/ESP01),
 - Use a fuse on the +12 V rail.
 - Test with 1 fan first.
 - Keep common ground between MCU and 12 V PSU.
-- If anything goes wrong or it becomes a fire hazard somehow i won't be responsible
-- Do it on your own risk 
 
 ## License
 MIT
