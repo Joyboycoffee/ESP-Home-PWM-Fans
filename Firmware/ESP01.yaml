@@ -14,10 +14,10 @@ ota:
   platform: esphome
 
 wifi:
-  ssid: "Sroye Bhavan-4G"
-  password: "9459127404"
+  ssid: "SSID of your wifi"
+  password: "password goes here"
   ap:
-    ssid: "SilentFan-Setup"
+    ssid: "PWM-Fan-Setup"
     password: "temp1234"
 
 web_server:
