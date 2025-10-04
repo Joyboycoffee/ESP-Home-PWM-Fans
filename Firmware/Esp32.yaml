@@ -22,12 +22,12 @@ ota:
 
 # WiFi configuration
 wifi:
-  ssid: "Sroye Bhavan-4G"
-  password: "9459127404"
+  ssid: "SSID of your wifi"
+  password: "password goes here"
   
   # Fallback hotspot if WiFi fails
   ap:
-    ssid: "SilentFan-Setup"
+    ssid: "PWM-Fan-Setup"
     password: "temp1234"
 
 # Web server for browser control
