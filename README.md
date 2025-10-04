@@ -68,7 +68,7 @@ This project is ideal for electronics enthusiasts, DIY PC builders, and anyone l
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/fan-control-app.git
+git clone https://github.com/Joyboycoffee/ESP-Home-PWM-Fans.git
 
 # Navigate into the project folder
 cd fan-control-app
