@@ -1,0 +1,13 @@
+# esphome/build outputs
+.esphome/
+.pioenvs/
+*.bin
+*.hex
+*.uf2
+# VSCode
+.vscode/
+# OS files
+Thumbs.db
+.DS_Store
+# Python envs
+venv/
