@@ -60,7 +60,7 @@ This project is ideal for electronics enthusiasts, DIY PC builders, and anyone l
 
 ### **1. Using Precompiled Executable**
 
-1. Download the `.exe` from the [Releases](#) section.
+1. Download the `.exe` from the [Releases](https://github.com/Joyboycoffee/ESP-Home-PWM-Fans/releases) section.
 2. Place it in any directory.
 3. Double-click to launch the app.
 
