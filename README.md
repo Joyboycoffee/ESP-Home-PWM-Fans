@@ -1,6 +1,6 @@
 # Pwm Fan controller via ESPHome using Esp01 or Esp32
 
-![App Logo](Software/logo.png)
+![App Logo](Software/app_icon.ico)
 
 ---
 
