@@ -1,0 +1,44 @@
+substitutions:
+  device_name: silent-fan
+
+esphome:
+  name: "${device_name}"
+  friendly_name: "Silent Fan"
+
+esp8266:
+  board: esp01_1m
+
+logger:
+api:       # Native ESPHome API for Python desktop app
+ota:
+  platform: esphome
+
+wifi:
+  ssid: "Sroye Bhavan-4G"
+  password: "9459127404"
+  ap:
+    ssid: "SilentFan-Setup"
+    password: "temp1234"
+
+web_server:
+  port: 80
+
+globals:
+  - id: min_duty_var
+    type: float
+    initial_value: '0.72'
+  - id: last_duty_var
+    type: float
+    initial_value: '0.0'
+
+output:
+  - platform: esp8266_pwm
+    pin: GPIO0
+    frequency: 20000 Hz
+    id: fan_pwm
+
+fan:
+  - platform: speed
+    output: fan_pwm
+    name: "Silent Fan"
+    id: silent_fan

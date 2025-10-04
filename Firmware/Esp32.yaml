@@ -1,0 +1,56 @@
+substitutions:
+  device_name: silent-fan
+
+esphome:
+  name: "${device_name}"
+  friendly_name: "Silent Fan"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# API for your desktop app
+api:
+
+# OTA updates
+ota:
+  platform: esphome
+
+# WiFi configuration
+wifi:
+  ssid: "Sroye Bhavan-4G"
+  password: "9459127404"
+  
+  # Fallback hotspot if WiFi fails
+  ap:
+    ssid: "SilentFan-Setup"
+    password: "temp1234"
+
+# Web server for browser control
+web_server:
+  port: 80
+
+# Global variables for fan control
+globals:
+  - id: min_duty_var
+    type: float
+    initial_value: '0.72'
+
+# PWM output for fan control (GPIO18)
+output:
+  - platform: ledc
+    pin: GPIO18
+    frequency: 20000 Hz
+    id: fan_pwm
+
+# Fan component
+fan:
+  - platform: speed
+    output: fan_pwm
+    name: "Silent Fan"
+    id: silent_fan
+    speed_count: 100
