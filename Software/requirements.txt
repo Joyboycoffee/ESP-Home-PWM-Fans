@@ -1,0 +1,22 @@
+# Core GUI Framework
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.13.0
+
+# Packaging (for creating .exe)
+PyInstaller==6.6.0
+
+# System & Hardware Communication (if needed for fan control / serial)
+pyserial==3.5
+psutil==5.9.8
+
+# File and Config Management
+configparser==6.0.0
+requests==2.31.0
+
+# Image and Icon Handling
+Pillow==10.2.0
+
+# Build Utilities
+setuptools==70.0.0
+wheel==0.43.0
