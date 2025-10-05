@@ -24,7 +24,7 @@ if not exist "app_icon.ico" (
 echo - app_icon.ico found ✓
 echo.
 
-:: Step 2: Clean previous build
+:: Step 2: Clean previous build and json
 echo Step 2: Cleaning previous build...
 if exist "dist" rmdir /s /q "dist"
 if exist "build" rmdir /s /q "build"

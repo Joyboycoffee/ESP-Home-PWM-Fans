@@ -54,7 +54,7 @@ class OptimizedAsyncioWorker(QObject):
         self.loop = asyncio.new_event_loop()
         self._reconnect_lock = threading.Lock()
         self._last_reconnect_attempt = 0
-        self._reconnect_cooldown = 10  # Start with 10 seconds, will be reduced on failures
+        self._reconnect_cooldown = 10  # Start with 10 seconds, will be reduced on failures i.e i hope so
         self._connection_failures = 0  # Track consecutive failures
         threading.Thread(target=self.run_loop, daemon=True).start()
 

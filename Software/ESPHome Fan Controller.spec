@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-# Simplified and portable PyInstaller spec file for ESPHome Fan Controller
+# Simplified and portable PyInstaller spec file for ESPHome PWM Fan Controller 
 
 a = Analysis(
     ['fan_control_app_optimized.py'],
