@@ -44,7 +44,7 @@ echo.
 echo Step 4: Building executable with PyInstaller...
 echo This may take a few minutes...
 
-pyinstaller fan_control_v2.py --noconfirm --onefile --windowed ^
+pyinstaller fan_control_v1.0.1.py --noconfirm --onefile --windowed ^
  --name "ESPHome Fan Controller" ^
  --icon=app_icon.ico ^
  --add-data "logo.png;." ^
