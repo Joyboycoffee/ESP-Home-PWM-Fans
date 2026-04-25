@@ -8,8 +8,7 @@ esphome:
     priority: 600
     then:
       - logger.log: "Device booting up..."
-      - fan.turn_on:
-          id: pc_fan
+      - switch.turn_on: full_speed_override
       - logger.log: "Fan set to 100 percent - waiting for application control"
 
 esp8266:
@@ -24,9 +23,10 @@ api:       # Native ESPHome API for Python desktop app
   reboot_timeout: 30min
   on_client_connected:
     - logger.log: "Application connected! Taking control of fan speed"
+    - switch.turn_off: full_speed_override
   on_client_disconnected:
     - logger.log: "Application disconnected - setting fans to 100 percent for safety"
-    - fan.turn_on: pc_fan
+    - switch.turn_on: full_speed_override
 
 ota:
   platform: esphome
@@ -51,7 +51,7 @@ wifi:
     - logger.log: "WiFi connected - ready for application control"
   on_disconnect:
     - logger.log: "WiFi disconnected! Setting fans to 100 percent for safety"
-    - fan.turn_on: pc_fan
+    - switch.turn_on: full_speed_override
   
 captive_portal:
 
@@ -64,12 +64,40 @@ web_server:
     password: admin
 
 globals:
+  - id: full_speed_override_state
+    type: bool
+    restore_value: no
+    initial_value: 'true'
   - id: min_duty_var
     type: float
     initial_value: '0.72'
   - id: last_duty_var
     type: float
     initial_value: '0.0'
+
+script:
+  - id: enable_full_speed_override
+    mode: restart
+    then:
+      - globals.set:
+          id: full_speed_override_state
+          value: "true"
+      - fan.turn_on:
+          id: pc_fan
+          speed: 100
+      - switch.template.publish:
+          id: full_speed_override
+          state: ON
+
+  - id: disable_full_speed_override
+    mode: restart
+    then:
+      - globals.set:
+          id: full_speed_override_state
+          value: "false"
+      - switch.template.publish:
+          id: full_speed_override
+          state: OFF
 
 output:
   - platform: esp8266_pwm
@@ -79,15 +107,19 @@ output:
 
 switch:
   - platform: template
-    name: "Fan Power Override"
-    id: fan_power_switch
+    name: "Full Speed Override"
+    id: full_speed_override
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
-    icon: mdi:power
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: mdi:fan-alert
+    lambda: |-
+      return id(full_speed_override_state);
     turn_on_action:
-      - fan.turn_on: pc_fan
+      - logger.log: "Full speed override enabled"
+      - script.execute: enable_full_speed_override
     turn_off_action:
-      - fan.turn_off: pc_fan
+      - logger.log: "Full speed override cleared - waiting for application control"
+      - script.execute: disable_full_speed_override
 
 sensor:
   - platform: wifi_signal

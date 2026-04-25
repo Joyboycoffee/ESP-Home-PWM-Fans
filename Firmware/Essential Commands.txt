@@ -1,3 +1,4 @@
 esphome compile .\ESP01.yaml
 esphome upload .\ESP01.yaml
 esphome logs .\ESP01.yaml  
+esphome restart ESP01.yaml
