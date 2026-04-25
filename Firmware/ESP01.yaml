@@ -1,9 +1,9 @@
 substitutions:
-  device_name: silent-fan
+  device_name: PC-FANS
 
 esphome:
   name: "${device_name}"
-  friendly_name: "Silent Fan"
+  friendly_name: "PC FAN"
 
 esp8266:
   board: esp01_1m
@@ -40,5 +40,5 @@ output:
 fan:
   - platform: speed
     output: fan_pwm
-    name: "Silent Fan"
-    id: silent_fan
+    name: "PC FAN"
+    id: pc_fan
