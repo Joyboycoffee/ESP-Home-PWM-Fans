@@ -5,10 +5,10 @@ esphome:
   name: "${device_name}"
   friendly_name: "Silent Fan"
   on_boot:
-    priority: 600
+    priority: -100
     then:
       - logger.log: "Device booting up..."
-      - switch.turn_on: full_speed_override
+      - script.execute: enable_full_speed_override
       - logger.log: "Fan set to 100 percent - waiting for application control"
 
 esp8266:
@@ -23,10 +23,10 @@ api:       # Native ESPHome API for Python desktop app
   reboot_timeout: 30min
   on_client_connected:
     - logger.log: "Application connected! Taking control of fan speed"
-    - switch.turn_off: full_speed_override
+    - script.execute: disable_full_speed_override
   on_client_disconnected:
     - logger.log: "Application disconnected - setting fans to 100 percent for safety"
-    - switch.turn_on: full_speed_override
+    - script.execute: enable_full_speed_override
 
 ota:
   platform: esphome
@@ -51,8 +51,8 @@ wifi:
     - logger.log: "WiFi connected - ready for application control"
   on_disconnect:
     - logger.log: "WiFi disconnected! Setting fans to 100 percent for safety"
-    - switch.turn_on: full_speed_override
-  
+    - script.execute: enable_full_speed_override
+
 captive_portal:
 
 web_server:
@@ -138,3 +138,4 @@ fan:
     name: "Silent Fan"
     id: pc_fan
     speed_count: 100
+    restore_mode: ALWAYS_ON
