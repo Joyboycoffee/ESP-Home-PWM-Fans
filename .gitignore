@@ -4,10 +4,37 @@
 *.bin
 *.hex
 *.uf2
-# VSCode
+
+# VSCode / IDE
 .vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
 # OS files
 Thumbs.db
 .DS_Store
-# Python envs
+
+# Python
 venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd.disabled
+
+# Logs & Runtime
+*.log
+fan_settings.json
+dotnet-install.ps1
+
+# PyInstaller temporary
+Software/build/
+Software/dist/
+*.spec
+
+# .NET / C# Build Outputs
+**/bin/
+**/obj/

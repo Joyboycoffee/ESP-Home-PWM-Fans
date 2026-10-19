@@ -1,0 +1,31 @@
+<UserControl x:Class="ESPHomeFanController.Controls.ToggleSwitch"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="28" d:DesignWidth="52"
+             MouseDown="UserControl_MouseDown"
+             Cursor="Hand"
+             Background="Transparent">
+    <Grid Width="52" Height="28">
+        <Border x:Name="TrackBorder"
+                CornerRadius="14"
+                Background="#334155"
+                BorderBrush="#475569"
+                BorderThickness="1">
+            <Canvas>
+                <Ellipse x:Name="Knob"
+                         Width="20"
+                         Height="20"
+                         Fill="White"
+                         Canvas.Left="4"
+                         Canvas.Top="3">
+                    <Ellipse.Effect>
+                        <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Opacity="0.3"/>
+                    </Ellipse.Effect>
+                </Ellipse>
+            </Canvas>
+        </Border>
+    </Grid>
+</UserControl>
