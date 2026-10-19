@@ -31,20 +31,20 @@ if exist "build" rmdir /s /q "build"
 
 echo.
 echo Step 3: Verifying PyQt6 installation...
-python -c "import PyQt6; print('PyQt6 found')" 2>nul
+python -c "import PyQt6; print('PyQt6 found')"
 if errorlevel 1 (
-    echo ERROR: PyQt6 is not installed!
-    echo Please install it with: pip install PyQt6
+    echo ERROR: PyQt6 is not installed in the global Python environment!
+    echo Please install it first.
     pause
     exit /b 1
 )
-echo - PyQt6 verified ^✓
+echo - PyQt6 verified ✓
 
 echo.
 echo Step 4: Building executable with PyInstaller...
 echo This may take a few minutes...
 
-pyinstaller fan_control_v1.0.1.py --noconfirm --onefile --windowed ^
+python -m PyInstaller fan_control_v2.0.0.py --noconfirm --onefile --windowed ^
  --name "ESPHome Fan Controller" ^
  --icon=app_icon.ico ^
  --add-data "logo.png;." ^

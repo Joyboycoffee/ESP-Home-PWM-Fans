@@ -1,0 +1,395 @@
+<Window x:Class="ESPHomeFanController.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:ESPHomeFanController.Controls"
+        mc:Ignorable="d"
+        Title="ESPHome Fan Controller" 
+        Height="640" Width="980"
+        MinHeight="540" MinWidth="820"
+        Background="#0b0f19"
+        WindowStartupLocation="CenterScreen"
+        Visibility="Hidden"
+        ShowInTaskbar="False"
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged">
+
+    <Window.Resources>
+        <!-- Fluent Card Style -->
+        <Style x:Key="FluentCard" TargetType="Border">
+            <Setter Property="Background" Value="#151d2f"/>
+            <Setter Property="BorderBrush" Value="#23304a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+
+        <!-- Primary Button Style -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#10b981"/>
+            <Setter Property="Foreground" Value="#ffffff"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#059669"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#047857"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1e293b"/>
+            <Setter Property="Foreground" Value="#94a3b8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="#334155" BorderThickness="1" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#334155"/>
+                                <Setter Property="Foreground" Value="#ffffff"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern Text Box -->
+        <Style x:Key="FluentTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#0f172a"/>
+            <Setter Property="Foreground" Value="#f8fafc"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="false" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#10b981"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Slider Customization -->
+        <Style x:Key="FluentSlider" TargetType="Slider">
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="TickFrequency" Value="1"/>
+            <Setter Property="IsSnapToTickEnabled" Value="True"/>
+            <Setter Property="Foreground" Value="#10b981"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Top Header -->
+            <RowDefinition Height="*"/>
+            <!-- Main Content -->
+        </Grid.RowDefinitions>
+
+        <!-- Top Header Area -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- App Title -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="10" Height="24" Background="#10b981" CornerRadius="3" Margin="0,0,10,0"/>
+                    <TextBlock Text="ESP HOME FAN CONTROLLER" 
+                               FontSize="20" 
+                               FontWeight="Bold" 
+                               Foreground="#ffffff" 
+                               FontFamily="Segoe UI Variable, Segoe UI, sans-serif"/>
+                </StackPanel>
+                <TextBlock Text="Ultra-low overhead hardware-synced PWM cooling controller" 
+                           FontSize="11" 
+                           Foreground="#64748b" 
+                           Margin="20,2,0,0"/>
+            </StackPanel>
+
+            <!-- Status Badges -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- LHM Badge -->
+                <Border x:Name="LhmBadge" 
+                        Background="#1e293b" 
+                        BorderBrush="#334155" 
+                        BorderThickness="1" 
+                        CornerRadius="16" 
+                        Padding="12,6" 
+                        Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse x:Name="LhmStatusDot" Width="8" Height="8" Fill="#64748b" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="TxtLhmStatus" Text="HW Monitor: Inactive" FontSize="11" FontWeight="SemiBold" Foreground="#94a3b8"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ESP Status Badge -->
+                <Border x:Name="EspBadge" 
+                        Background="#1e293b" 
+                        BorderBrush="#334155" 
+                        BorderThickness="1" 
+                        CornerRadius="16" 
+                        Padding="12,6">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse x:Name="EspStatusDot" Width="8" Height="8" Fill="#ef4444" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="TxtEspStatus" Text="ESP: Disconnected" FontSize="11" FontWeight="SemiBold" Foreground="#94a3b8"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" MinWidth="340" MaxWidth="440"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Column: Gauges & Mode Controls -->
+            <Grid Grid.Column="0" Margin="0,0,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Gauges Card -->
+                    <RowDefinition Height="*"/>
+                    <!-- Mode & Manual Controls Card -->
+                </Grid.RowDefinitions>
+
+                <!-- Gauges Card -->
+                <Border Grid.Row="0" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- CPU Temperature Gauge -->
+                        <controls:CircularGauge x:Name="CpuGauge" 
+                                                Grid.Column="0" 
+                                                Title="CPU TEMP" 
+                                                Unit="°C" 
+                                                Minimum="20" 
+                                                Maximum="90" 
+                                                Height="160"
+                                                ArcColor="#f59e0b"
+                                                ArcEndColor="#ef4444"/>
+
+                        <!-- Fan Speed Gauge -->
+                        <controls:CircularGauge x:Name="FanGauge" 
+                                                Grid.Column="1" 
+                                                Title="FAN SPEED" 
+                                                Unit="%" 
+                                                Minimum="0" 
+                                                Maximum="100" 
+                                                Height="160"
+                                                ArcColor="#8b5cf6"
+                                                ArcEndColor="#06b6d4"/>
+                    </Grid>
+                </Border>
+
+                <!-- Mode & Control Card -->
+                <Border Grid.Row="1" Style="{StaticResource FluentCard}">
+                    <StackPanel VerticalAlignment="Top">
+                        <TextBlock Text="Cooling Automation &amp; Speed" 
+                                   FontSize="14" 
+                                   FontWeight="Bold" 
+                                   Foreground="#e2e8f0" 
+                                   Margin="0,0,0,12"/>
+
+                        <!-- Automation Switch Row -->
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="Temperature Curve Auto" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc"/>
+                                <TextBlock Text="Dynamic step adjustments based on curve" FontSize="11" Foreground="#64748b"/>
+                            </StackPanel>
+                            <controls:ToggleSwitch x:Name="AutoSwitch" Grid.Column="1" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Separator Background="#23304a" Margin="0,0,0,14"/>
+
+                        <!-- Manual Speed Slider Area -->
+                        <StackPanel Margin="0,0,0,14">
+                            <Grid Margin="0,0,0,6">
+                                <TextBlock Text="Manual Speed Override" FontSize="12" FontWeight="SemiBold" Foreground="#94a3b8"/>
+                                <TextBlock x:Name="TxtManualPercent" Text="0%" FontSize="12" FontWeight="Bold" Foreground="#10b981" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Slider x:Name="SpeedSlider" 
+                                    Style="{StaticResource FluentSlider}"
+                                    ValueChanged="SpeedSlider_ValueChanged"
+                                    PreviewMouseLeftButtonUp="SpeedSlider_PreviewMouseLeftButtonUp"/>
+                        </StackPanel>
+
+                        <Separator Background="#23304a" Margin="0,0,0,14"/>
+
+                        <!-- Full Speed Override Toggle -->
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="100% Safety Full Speed" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc"/>
+                                <TextBlock Text="Forces 100% duty cycle immediately" FontSize="11" Foreground="#64748b"/>
+                            </StackPanel>
+                            <controls:ToggleSwitch x:Name="OverrideSwitch" Grid.Column="1" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Logic Status Pill -->
+                        <Border Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,6,0,0">
+                            <TextBlock x:Name="TxtLogicStatus" 
+                                       Text="Initializing logic controller..." 
+                                       FontSize="12" 
+                                       FontWeight="SemiBold" 
+                                       Foreground="#10b981" 
+                                       TextWrapping="Wrap"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Right Column: Details, Graph, & Connection Settings -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Device Details Card -->
+                    <RowDefinition Height="*"/>
+                    <!-- Curve Graph Card -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Connection Settings Card -->
+                </Grid.RowDefinitions>
+
+                <!-- Device Details Card -->
+                <Border Grid.Row="0" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Fan Entity Status -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="FAN ENTITY" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
+                            <TextBlock x:Name="TxtFanState" Text="Silent Fan (OFF)" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- WiFi Signal -->
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="WIFI RSSI" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
+                            <TextBlock x:Name="TxtWifiSignal" Text="-- dBm" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Uptime -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="DEVICE UPTIME" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
+                            <TextBlock x:Name="TxtUptime" Text="--" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <!-- Web Console Action -->
+                        <Button Grid.Column="3" 
+                                Content="Web Console" 
+                                Style="{StaticResource SecondaryButton}" 
+                                Padding="12,0" 
+                                Click="BtnWebConsole_Click"/>
+                    </Grid>
+                </Border>
+
+                <!-- Curve Graph Card -->
+                <Border Grid.Row="1" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="Temperature / Fan Speed Step Curve" 
+                                       FontSize="14" 
+                                       FontWeight="Bold" 
+                                       Foreground="#e2e8f0"/>
+                            <TextBlock Text="Drag cyan control points to calibrate thresholds" 
+                                       FontSize="11" 
+                                       Foreground="#64748b" 
+                                       HorizontalAlignment="Right" 
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <controls:FanCurveGraph x:Name="CurveGraph" Grid.Row="1"/>
+                    </Grid>
+                </Border>
+
+                <!-- Connection Settings Card -->
+                <Border Grid.Row="2" Style="{StaticResource FluentCard}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" 
+                                   Text="ESP Host Address:" 
+                                   FontSize="13" 
+                                   FontWeight="SemiBold" 
+                                   Foreground="#94a3b8" 
+                                   VerticalAlignment="Center" 
+                                   Margin="0,0,14,0"/>
+
+                        <TextBox x:Name="TxtIpAddress" 
+                                 Grid.Column="1" 
+                                 Style="{StaticResource FluentTextBox}" 
+                                 Margin="0,0,12,0"/>
+
+                        <Button x:Name="BtnConnect" 
+                                Grid.Column="2" 
+                                Content="Connect Device" 
+                                Style="{StaticResource PrimaryButton}" 
+                                Width="140" 
+                                Click="BtnConnect_Click"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
