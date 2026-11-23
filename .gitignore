@@ -38,3 +38,7 @@ Software/dist/
 # .NET / C# Build Outputs
 **/bin/
 **/obj/
+
+# Secrets
+secrets.yaml
+Firmware/secrets.yaml

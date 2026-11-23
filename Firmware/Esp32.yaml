@@ -22,13 +22,13 @@ ota:
 
 # WiFi configuration
 wifi:
-  ssid: \"REDACTED\"
-  password: \"REDACTED\"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   
   # Fallback hotspot if WiFi fails
   ap:
-    ssid: \"REDACTED\"
-    password: \"REDACTED\"
+    ssid: "PWM-Fan-Setup"
+    password: !secret fallback_ap_password
 
 # Web server for browser control
 web_server:

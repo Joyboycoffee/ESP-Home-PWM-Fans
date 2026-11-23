@@ -37,15 +37,15 @@ safe_mode:
   boot_is_good_after: 5min
 
 wifi:
-  ssid: \"REDACTED\"
-  password: \"REDACTED\"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   manual_ip:
     static_ip: 192.168.1.40
     gateway: 192.168.1.1
     subnet: 255.255.255.0
   ap:
-    ssid: \"REDACTED\"
-    password: \"REDACTED\"
+    ssid: "PWM-Fan-Setup"
+    password: !secret fallback_ap_password
   power_save_mode: LIGHT
   on_connect:
     - logger.log: "WiFi connected - ready for application control"
