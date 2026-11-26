@@ -42,3 +42,5 @@ Software/dist/
 # Secrets
 secrets.yaml
 Firmware/secrets.yaml
+*.sys
+*.sys.disabled
