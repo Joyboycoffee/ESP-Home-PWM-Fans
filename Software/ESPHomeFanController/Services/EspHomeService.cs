@@ -23,6 +23,7 @@ namespace ESPHomeFanController.Services
         private int _consecutiveFailures;
         private int _lastCommandedSpeed = -1;
         private DateTime _lastCommandTime = DateTime.MinValue;
+        private DateTime _lastTelemetryPoll = DateTime.MinValue;
         private readonly TimeSpan _minCommandInterval = TimeSpan.FromMilliseconds(200);
 
         private CancellationTokenSource? _workerCts;
@@ -32,6 +33,7 @@ namespace ESPHomeFanController.Services
         public event Action<bool, int>? FanStateChanged;
         public event Action<string, float?>? TelemetryUpdated;
         public event Action? ConnectionRestored;
+        public event Action<bool>? FullSpeedOverrideDetectedOnDevice;
 
         public bool IsConnected => _isConnected;
         public string Host => _host;
@@ -47,7 +49,7 @@ namespace ESPHomeFanController.Services
             };
             _httpClient = new HttpClient(handler)
             {
-                Timeout = TimeSpan.FromMilliseconds(2500)
+                Timeout = TimeSpan.FromMilliseconds(2000)
             };
             UpdateAuthHeader();
         }
@@ -80,6 +82,53 @@ namespace ESPHomeFanController.Services
             _backgroundTask = Task.Run(() => SupervisorLoopAsync(_workerCts.Token));
         }
 
+        public async Task<bool> ForceReconnectAsync(string? host = null, int? port = null, string? username = null, string? password = null)
+        {
+            if (!string.IsNullOrWhiteSpace(host)) _host = host.Trim();
+            if (port.HasValue && port.Value > 0) _port = port.Value;
+            if (username != null) _username = username;
+            if (password != null) _password = password;
+            UpdateAuthHeader();
+
+            SetStatus("Connecting");
+            _consecutiveFailures = 0;
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                bool success = await PollDeviceStateAsync(cts.Token);
+                if (success)
+                {
+                    _isConnected = true;
+                    _lastCommandedSpeed = -1;
+                    SetStatus("Connected");
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using var ovCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                            await SetFullSpeedOverrideAsync(false, ovCts.Token);
+                        }
+                        catch { }
+                    });
+                    ConnectionRestored?.Invoke();
+                    return true;
+                }
+                else
+                {
+                    _isConnected = false;
+                    SetStatus("Disconnected");
+                    return false;
+                }
+            }
+            catch
+            {
+                _isConnected = false;
+                SetStatus("Disconnected");
+                return false;
+            }
+        }
+
         public void Stop()
         {
             _workerCts?.Cancel();
@@ -103,14 +152,19 @@ namespace ESPHomeFanController.Services
                     bool isResponding = await PollDeviceStateAsync(token);
                     if (isResponding)
                     {
+                        bool wasDisconnected = !_isConnected || _consecutiveFailures > 0;
                         _consecutiveFailures = 0;
+
                         if (!_isConnected)
                         {
                             _isConnected = true;
                             _lastCommandedSpeed = -1;
                             SetStatus("Connected");
+                        }
 
-                            // Reconnected! Immediately clear hardware override on ESP
+                        if (wasDisconnected)
+                        {
+                            // Recovered from a hiccup or reconnect! Clear override and re-sync
                             _ = Task.Run(async () =>
                             {
                                 try
@@ -123,19 +177,20 @@ namespace ESPHomeFanController.Services
 
                             ConnectionRestored?.Invoke();
                         }
+
                         await Task.Delay(2500, token);
                     }
                     else
                     {
                         _consecutiveFailures++;
-                        // Require 3 consecutive failures before declaring Disconnected to tolerate ESP8266 momentary hiccups
-                        if (_consecutiveFailures >= 3 && _isConnected)
+                        // If 2 consecutive failures occur, mark as disconnected
+                        if (_consecutiveFailures >= 2 && _isConnected)
                         {
                             _isConnected = false;
                             _lastCommandedSpeed = -1;
                             SetStatus("Disconnected");
                         }
-                        await Task.Delay(2000, token);
+                        await Task.Delay(1500, token);
                     }
                 }
                 catch (OperationCanceledException)
@@ -146,13 +201,13 @@ namespace ESPHomeFanController.Services
                 {
                     Debug.WriteLine($"[EspHome] Loop error: {ex.Message}");
                     _consecutiveFailures++;
-                    if (_consecutiveFailures >= 3 && _isConnected)
+                    if (_consecutiveFailures >= 2 && _isConnected)
                     {
                         _isConnected = false;
                         _lastCommandedSpeed = -1;
                         SetStatus("Disconnected");
                     }
-                    await Task.Delay(2000, token);
+                    await Task.Delay(1500, token);
                 }
             }
         }
@@ -171,68 +226,90 @@ namespace ESPHomeFanController.Services
                 // 1. Poll Fan State
                 string fanUrl = $"{baseUrl}/fan/silent_fan";
                 using var fanResponse = await _httpClient.GetAsync(fanUrl, token);
-                if (fanResponse.IsSuccessStatusCode)
-                {
-                    string json = await fanResponse.Content.ReadAsStringAsync(token);
-                    using var doc = JsonDocument.Parse(json);
-                    var root = doc.RootElement;
-
-                    string state = root.TryGetProperty("state", out var st) ? st.GetString() ?? "" : "";
-                    int speedLevel = 0;
-                    if (root.TryGetProperty("speed_level", out var sl))
-                    {
-                        speedLevel = sl.GetInt32();
-                    }
-
-                    bool isOn = state.Equals("ON", StringComparison.OrdinalIgnoreCase);
-                    FanStateChanged?.Invoke(isOn, isOn ? speedLevel : 0);
-                }
-                else
+                if (!fanResponse.IsSuccessStatusCode)
                 {
                     return false;
                 }
 
-                // 2. Poll Uptime and WiFi
-                string uptimeStr = "--";
-                float? wifiDbm = null;
+                string json = await fanResponse.Content.ReadAsStringAsync(token);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
 
+                string state = root.TryGetProperty("state", out var st) ? st.GetString() ?? "" : "";
+                int speedLevel = 0;
+                if (root.TryGetProperty("speed_level", out var sl))
+                {
+                    speedLevel = sl.GetInt32();
+                }
+
+                bool isOn = state.Equals("ON", StringComparison.OrdinalIgnoreCase);
+                FanStateChanged?.Invoke(isOn, isOn ? speedLevel : 0);
+
+                // 2. Poll Full Speed Override switch state on device to detect if hardware tripped
                 try
                 {
-                    string uptimeUrl = $"{baseUrl}/sensor/uptime";
-                    using var uptimeResp = await _httpClient.GetAsync(uptimeUrl, token);
-                    if (uptimeResp.IsSuccessStatusCode)
+                    string overrideUrl = $"{baseUrl}/switch/full_speed_override";
+                    using var overrideResp = await _httpClient.GetAsync(overrideUrl, token);
+                    if (overrideResp.IsSuccessStatusCode)
                     {
-                        string utJson = await uptimeResp.Content.ReadAsStringAsync(token);
-                        using var utDoc = JsonDocument.Parse(utJson);
-                        if (utDoc.RootElement.TryGetProperty("value", out var utVal))
+                        string ovJson = await overrideResp.Content.ReadAsStringAsync(token);
+                        using var ovDoc = JsonDocument.Parse(ovJson);
+                        if (ovDoc.RootElement.TryGetProperty("state", out var ovState))
                         {
-                            double seconds = utVal.GetDouble();
-                            int d = (int)(seconds / 86400);
-                            int h = (int)((seconds % 86400) / 3600);
-                            int m = (int)((seconds % 3600) / 60);
-                            uptimeStr = d > 0 ? $"{d}d {h}h {m}m" : $"{h}h {m}m";
+                            bool isOverrideActive = ovState.GetString()?.Equals("ON", StringComparison.OrdinalIgnoreCase) ?? false;
+                            FullSpeedOverrideDetectedOnDevice?.Invoke(isOverrideActive);
                         }
                     }
                 }
                 catch { }
 
-                try
+                // 3. Stagger Uptime and WiFi telemetry polling to only run every 15 seconds
+                // This avoids overloading the ESP8266's limited CPU and lwIP socket pool
+                if (DateTime.UtcNow - _lastTelemetryPoll > TimeSpan.FromSeconds(15))
                 {
-                    string wifiUrl = $"{baseUrl}/sensor/wifi_signal_strength";
-                    using var wifiResp = await _httpClient.GetAsync(wifiUrl, token);
-                    if (wifiResp.IsSuccessStatusCode)
+                    _lastTelemetryPoll = DateTime.UtcNow;
+                    string uptimeStr = "--";
+                    float? wifiDbm = null;
+
+                    try
                     {
-                        string wifiJson = await wifiResp.Content.ReadAsStringAsync(token);
-                        using var wifiDoc = JsonDocument.Parse(wifiJson);
-                        if (wifiDoc.RootElement.TryGetProperty("value", out var wifiVal))
+                        string uptimeUrl = $"{baseUrl}/sensor/uptime";
+                        using var uptimeResp = await _httpClient.GetAsync(uptimeUrl, token);
+                        if (uptimeResp.IsSuccessStatusCode)
                         {
-                            wifiDbm = (float)Math.Round(wifiVal.GetDouble(), 0);
+                            string utJson = await uptimeResp.Content.ReadAsStringAsync(token);
+                            using var utDoc = JsonDocument.Parse(utJson);
+                            if (utDoc.RootElement.TryGetProperty("value", out var utVal))
+                            {
+                                double seconds = utVal.GetDouble();
+                                int d = (int)(seconds / 86400);
+                                int h = (int)((seconds % 86400) / 3600);
+                                int m = (int)((seconds % 3600) / 60);
+                                uptimeStr = d > 0 ? $"{d}d {h}h {m}m" : $"{h}h {m}m";
+                            }
                         }
                     }
-                }
-                catch { }
+                    catch { }
 
-                TelemetryUpdated?.Invoke(uptimeStr, wifiDbm);
+                    try
+                    {
+                        string wifiUrl = $"{baseUrl}/sensor/wifi_signal_strength";
+                        using var wifiResp = await _httpClient.GetAsync(wifiUrl, token);
+                        if (wifiResp.IsSuccessStatusCode)
+                        {
+                            string wifiJson = await wifiResp.Content.ReadAsStringAsync(token);
+                            using var wifiDoc = JsonDocument.Parse(wifiJson);
+                            if (wifiDoc.RootElement.TryGetProperty("value", out var wifiVal))
+                            {
+                                wifiDbm = (float)Math.Round(wifiVal.GetDouble(), 0);
+                            }
+                        }
+                    }
+                    catch { }
+
+                    TelemetryUpdated?.Invoke(uptimeStr, wifiDbm);
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -263,8 +340,10 @@ namespace ESPHomeFanController.Services
             try
             {
                 string baseUrl = $"http://{_host}:{_port}";
-                // Always command speed_level (even at 0%)
-                string url = $"{baseUrl}/fan/silent_fan/turn_on?speed_level={speedPercent}";
+                // If 0%, call turn_off to ensure PWM duty cycle is 0% and fan stops spinning completely
+                string url = speedPercent == 0
+                    ? $"{baseUrl}/fan/silent_fan/turn_off"
+                    : $"{baseUrl}/fan/silent_fan/turn_on?speed_level={speedPercent}";
 
                 using var content = new StringContent(string.Empty);
                 using var res = await _httpClient.PostAsync(url, content, token);

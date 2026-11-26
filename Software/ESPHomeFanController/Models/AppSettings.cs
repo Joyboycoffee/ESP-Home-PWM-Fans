@@ -28,12 +28,15 @@ namespace ESPHomeFanController.Models
         [JsonPropertyName("thresholds")]
         public List<CurvePoint> Thresholds { get; set; } = new()
         {
-            new CurvePoint(30, 0),
-            new CurvePoint(40, 25),
-            new CurvePoint(50, 50),
-            new CurvePoint(60, 75),
-            new CurvePoint(70, 100)
+            new CurvePoint(55, 50),
+            new CurvePoint(62, 65),
+            new CurvePoint(68, 80),
+            new CurvePoint(74, 90),
+            new CurvePoint(80, 100)
         };
+
+        [JsonPropertyName("theme")]
+        public string Theme { get; set; } = "Beige";
 
         [JsonPropertyName("automation_enabled")]
         public bool AutomationEnabled { get; set; } = false;

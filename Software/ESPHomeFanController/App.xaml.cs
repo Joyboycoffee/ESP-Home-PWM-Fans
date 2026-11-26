@@ -21,6 +21,12 @@ namespace ESPHomeFanController
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            try
+            {
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+            }
+            catch { }
+
             base.OnStartup(e);
             _ = new MainWindow();
         }

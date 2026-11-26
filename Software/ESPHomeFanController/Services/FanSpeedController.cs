@@ -17,7 +17,10 @@ namespace ESPHomeFanController.Services
         private CancellationTokenSource? _loopCts;
         private Task? _loopTask;
         private int _lastDispatchedSpeed = -1;
+        private int _currentTargetSpeed = 50;
+        private DateTime _lastDispatchTime = DateTime.MinValue;
         private bool _userOverrideExplicitlySet;
+        private readonly SemaphoreSlim _evalLock = new(1, 1);
 
         public event Action<string>? LogicStatusUpdated;
         public event Action<int>? TargetSpeedUpdated;
@@ -72,20 +75,66 @@ namespace ESPHomeFanController.Services
             _settings = settings;
 
             _espService.ConnectionRestored += OnConnectionRestored;
+            _espService.FanStateChanged += OnDeviceFanStateChanged;
+            _espService.FullSpeedOverrideDetectedOnDevice += OnFullSpeedOverrideDetected;
         }
 
         private void OnConnectionRestored()
         {
             _lastDispatchedSpeed = -1;
+            _lastDispatchTime = DateTime.MinValue;
 
             // If user did not manually turn on Full Speed Override, ensure it's cleared on reconnect
-            if (!_userOverrideExplicitlySet)
+            if (!_userOverrideExplicitlySet && !_settings.FullSpeedOverride)
             {
                 _settings.FullSpeedOverride = false;
-                _settings.Save();
+                _ = _espService.SetFullSpeedOverrideAsync(false);
             }
 
             EvaluateSpeedImmediately();
+        }
+
+        private void OnDeviceFanStateChanged(bool isOn, int actualSpeed)
+        {
+            // Auto-heal: If user has NOT enabled Full Speed Override, but the ESP reports running at 100%
+            // while target speed is less than 100%, the ESP tripped safety override (e.g. WiFi hiccup or reboot)
+            if (!_settings.FullSpeedOverride && isOn && actualSpeed == 100 && _currentTargetSpeed < 100)
+            {
+                Debug.WriteLine($"[FanSpeedController] Device full-speed mismatch detected (actual: {actualSpeed}%, target: {_currentTargetSpeed}%). Auto-healing!");
+                _ = AutoHealAsync();
+            }
+        }
+
+        private void OnFullSpeedOverrideDetected(bool deviceOverrideActive)
+        {
+            // Auto-heal: If hardware switch on ESP is ON while user settings have it OFF, disarm it immediately
+            if (deviceOverrideActive && !_settings.FullSpeedOverride)
+            {
+                Debug.WriteLine("[FanSpeedController] Hardware full_speed_override detected ON on ESP. Disarming!");
+                _ = AutoHealAsync();
+            }
+        }
+
+        private async Task AutoHealAsync()
+        {
+            if (!_espService.IsConnected) return;
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await _espService.SetFullSpeedOverrideAsync(false, cts.Token);
+                bool success = await _espService.SetFanSpeedAsync(_currentTargetSpeed, cts.Token);
+                if (success)
+                {
+                    _lastDispatchedSpeed = _currentTargetSpeed;
+                    _lastDispatchTime = DateTime.UtcNow;
+                    Debug.WriteLine($"[FanSpeedController] Auto-healed: override disarmed, speed set to {_currentTargetSpeed}%");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[FanSpeedController] AutoHeal error: {ex.Message}");
+            }
         }
 
         public void Start()
@@ -132,7 +181,7 @@ namespace ESPHomeFanController.Services
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"[Controller] Error: {ex.Message}");
-                    await Task.Delay(3000, token);
+                    await Task.Delay(2500, token);
                 }
             }
         }
@@ -151,44 +200,68 @@ namespace ESPHomeFanController.Services
 
         private async Task EvaluateAndApplySpeedAsync(CancellationToken token)
         {
-            float? cpuTemp = await _hwService.FetchCpuTemperatureAsync(token);
-            int targetSpeed;
-            string logicText;
+            if (!await _evalLock.WaitAsync(500, token)) return;
 
-            if (_settings.FullSpeedOverride)
+            try
             {
-                targetSpeed = 100;
-                logicText = "Full Speed Override Active: 100% Speed";
-            }
-            else if (!_settings.AutomationEnabled)
-            {
-                targetSpeed = _settings.ManualSpeed;
-                logicText = $"Manual Mode: {targetSpeed}% Speed";
-            }
-            else
-            {
-                if (cpuTemp.HasValue)
+                float? cpuTemp = await _hwService.FetchCpuTemperatureAsync(token);
+                int targetSpeed;
+                string logicText;
+
+                if (_settings.FullSpeedOverride)
                 {
-                    targetSpeed = CalculateStepSpeed(cpuTemp.Value);
-                    logicText = $"Auto Mode: {cpuTemp.Value:F1}°C -> {targetSpeed}% Speed";
+                    targetSpeed = 100;
+                    logicText = "Full Speed Override Active: 100% Speed";
+                }
+                else if (!_settings.AutomationEnabled)
+                {
+                    targetSpeed = _settings.ManualSpeed;
+                    logicText = $"Manual Mode: {targetSpeed}% Speed";
                 }
                 else
                 {
-                    targetSpeed = _lastDispatchedSpeed >= 0 ? _lastDispatchedSpeed : 50;
-                    logicText = "Auto Mode: Waiting for CPU temperature sensor...";
+                    if (cpuTemp.HasValue)
+                    {
+                        targetSpeed = CalculateStepSpeed(cpuTemp.Value);
+                        logicText = targetSpeed == 0
+                            ? $"Auto Mode: {cpuTemp.Value:F1}°C → Off (0%)"
+                            : $"Auto Mode: {cpuTemp.Value:F1}°C → {targetSpeed}% Speed";
+                    }
+                    else
+                    {
+                        targetSpeed = _lastDispatchedSpeed >= 0 ? _lastDispatchedSpeed : 50;
+                        logicText = "Auto Mode: Waiting for CPU temperature sensor...";
+                    }
+                }
+
+                _currentTargetSpeed = targetSpeed;
+                LogicStatusUpdated?.Invoke(logicText);
+                TargetSpeedUpdated?.Invoke(targetSpeed);
+
+                bool speedChanged = (_lastDispatchedSpeed != targetSpeed);
+                // Heartbeat: Re-assert speed every 8 seconds even if speed hasn't changed
+                // This guarantees the ESP never gets stuck in full speed if it reboots or reconnects
+                bool heartbeatDue = (DateTime.UtcNow - _lastDispatchTime) > TimeSpan.FromSeconds(8);
+
+                if (_espService.IsConnected && (speedChanged || heartbeatDue || _settings.FullSpeedOverride))
+                {
+                    bool success = await _espService.SetFanSpeedAsync(targetSpeed, token);
+                    if (success)
+                    {
+                        _lastDispatchedSpeed = targetSpeed;
+                        _lastDispatchTime = DateTime.UtcNow;
+                    }
+
+                    // Always ensure hardware override is cleared if user didn't request full speed
+                    if (!_settings.FullSpeedOverride)
+                    {
+                        await _espService.SetFullSpeedOverrideAsync(false, token);
+                    }
                 }
             }
-
-            LogicStatusUpdated?.Invoke(logicText);
-            TargetSpeedUpdated?.Invoke(targetSpeed);
-
-            if (_espService.IsConnected && (_lastDispatchedSpeed != targetSpeed || _settings.FullSpeedOverride))
+            finally
             {
-                bool success = await _espService.SetFanSpeedAsync(targetSpeed, token);
-                if (success)
-                {
-                    _lastDispatchedSpeed = targetSpeed;
-                }
+                _evalLock.Release();
             }
         }
 
@@ -197,9 +270,10 @@ namespace ESPHomeFanController.Services
             var sorted = _settings.Thresholds.OrderBy(p => p.Temperature).ToList();
             if (sorted.Count == 0) return 50;
 
-            if (cpuTemp <= sorted[0].Temperature)
+            // Below first threshold (e.g. < 55°C): 0% speed (Fan OFF)
+            if (cpuTemp < sorted[0].Temperature)
             {
-                return sorted[0].Speed;
+                return 0;
             }
 
             if (cpuTemp >= sorted[^1].Temperature)
@@ -207,13 +281,11 @@ namespace ESPHomeFanController.Services
                 return sorted[^1].Speed;
             }
 
-            // Step/Staircase curve logic:
-            // If temp is between threshold[i] and threshold[i+1], use the higher threshold speed
             for (int i = 0; i < sorted.Count - 1; i++)
             {
-                if (cpuTemp > sorted[i].Temperature && cpuTemp <= sorted[i + 1].Temperature)
+                if (cpuTemp >= sorted[i].Temperature && cpuTemp < sorted[i + 1].Temperature)
                 {
-                    return sorted[i + 1].Speed;
+                    return sorted[i].Speed;
                 }
             }
 
@@ -223,7 +295,10 @@ namespace ESPHomeFanController.Services
         public void Dispose()
         {
             _espService.ConnectionRestored -= OnConnectionRestored;
+            _espService.FanStateChanged -= OnDeviceFanStateChanged;
+            _espService.FullSpeedOverrideDetectedOnDevice -= OnFullSpeedOverrideDetected;
             Stop();
+            _evalLock.Dispose();
         }
     }
 }

@@ -6,8 +6,8 @@
     <Application.Resources>
         <!-- Modern Fluent ContextMenu Style -->
         <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="#151d2f"/>
-            <Setter Property="BorderBrush" Value="#2d3d5a"/>
+            <Setter Property="Background" Value="#0f0d11"/>
+            <Setter Property="BorderBrush" Value="#2e2933"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="4"/>
             <Setter Property="Template">
@@ -16,11 +16,11 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="12"
                                 Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
                             <Border.Effect>
-                                <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="4" Opacity="0.4"/>
+                                <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="4" Opacity="0.5"/>
                             </Border.Effect>
                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
                         </Border>
@@ -32,7 +32,7 @@
         <!-- Modern Fluent MenuItem Style -->
         <Style TargetType="MenuItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#f8fafc"/>
+            <Setter Property="Foreground" Value="#f4f2f5"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Height" Value="32"/>
             <Setter Property="Padding" Value="10,0,12,0"/>
@@ -42,7 +42,7 @@
                     <ControlTemplate TargetType="MenuItem">
                         <Border x:Name="ItemBorder"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="6"
+                                CornerRadius="8"
                                 Padding="{TemplateBinding Padding}"
                                 Margin="0,1"
                                 SnapsToDevicePixels="True">
@@ -55,7 +55,7 @@
                                 <!-- Checkmark Indicator (Visible only when IsChecked is true) -->
                                 <Path x:Name="CheckGlyph"
                                       Data="M 1,4 L 4,8 L 11,1"
-                                      Stroke="#10b981"
+                                      Stroke="#b89bb8"
                                       StrokeThickness="2"
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
@@ -78,10 +78,10 @@
                                 <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible"/>
                             </Trigger>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#23304a"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#251f2b"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#64748b"/>
+                                <Setter Property="Foreground" Value="#6e6878"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -91,7 +91,7 @@
 
         <!-- ContextMenu Separator Style -->
         <Style TargetType="Separator">
-            <Setter Property="Background" Value="#23304a"/>
+            <Setter Property="Background" Value="#2e2933"/>
             <Setter Property="Height" Value="1"/>
             <Setter Property="Margin" Value="6,4,6,4"/>
             <Setter Property="Template">

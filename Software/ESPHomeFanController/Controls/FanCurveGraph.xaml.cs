@@ -28,6 +28,24 @@ namespace ESPHomeFanController.Controls
         private const double MarginTop = 25.0;
         private const double MarginBottom = 30.0;
 
+        private Color _curveColor = Color.FromRgb(184, 155, 184);
+        private Color _gridColor = Color.FromArgb(35, 154, 146, 161);
+        private Color _axisTextColor = Color.FromRgb(154, 146, 161);
+        private Color _tooltipBg = Color.FromArgb(235, 27, 23, 30);
+        private Color _tooltipBorder = Color.FromRgb(86, 64, 105);
+        private Color _tooltipText = Color.FromRgb(244, 242, 245);
+
+        public void SetTheme(Color curveColor, Color gridColor, Color axisTextColor, Color tooltipBg, Color tooltipBorder, Color tooltipText)
+        {
+            _curveColor = curveColor;
+            _gridColor = gridColor;
+            _axisTextColor = axisTextColor;
+            _tooltipBg = tooltipBg;
+            _tooltipBorder = tooltipBorder;
+            _tooltipText = tooltipText;
+            Redraw();
+        }
+
         public FanCurveGraph()
         {
             InitializeComponent();
@@ -80,7 +98,11 @@ namespace ESPHomeFanController.Controls
             if (plotHeight <= 0) return 0;
             double ratio = (plotTop + plotHeight - y) / plotHeight;
             double speed = ratio * 100.0;
-            return (int)Math.Round(Math.Clamp(speed, 0, 100));
+            int rounded = (int)Math.Round(Math.Clamp(speed, 0, 100));
+            // Snap to 0 and 100 near graph edges to prevent accidental 1% or 99% offsets
+            if (rounded <= 2) return 0;
+            if (rounded >= 98) return 100;
+            return rounded;
         }
 
         public void Redraw()
@@ -102,23 +124,32 @@ namespace ESPHomeFanController.Controls
 
             var sorted = _thresholds.OrderBy(p => p.Temperature).ToList();
 
-            Point firstPoint = new Point(plotLeft, MapY(sorted[0].Speed, plotTop, plotHeight));
+            double zeroY = MapY(0, plotTop, plotHeight);
+            Point firstPoint = new Point(plotLeft, zeroY);
             var stepFigure = new PathFigure { StartPoint = firstPoint, IsClosed = false };
             var fillFigure = new PathFigure { StartPoint = new Point(plotLeft, plotTop + plotHeight), IsClosed = true };
             fillFigure.Segments.Add(new LineSegment(firstPoint, true));
 
-            for (int i = 0; i < sorted.Count; i++)
+            double firstNodeX = MapX(sorted[0].Temperature, plotLeft, plotWidth);
+            double firstNodeY = MapY(sorted[0].Speed, plotTop, plotHeight);
+
+            // Horizontal line along 0% from MinTemp until first threshold (e.g. 55°C)
+            stepFigure.Segments.Add(new LineSegment(new Point(firstNodeX, zeroY), true));
+            fillFigure.Segments.Add(new LineSegment(new Point(firstNodeX, zeroY), true));
+
+            // Vertical jump at first threshold up to its speed (e.g. 50%)
+            stepFigure.Segments.Add(new LineSegment(new Point(firstNodeX, firstNodeY), true));
+            fillFigure.Segments.Add(new LineSegment(new Point(firstNodeX, firstNodeY), true));
+
+            for (int i = 1; i < sorted.Count; i++)
             {
                 double px = MapX(sorted[i].Temperature, plotLeft, plotWidth);
                 double py = MapY(sorted[i].Speed, plotTop, plotHeight);
 
-                if (i > 0)
-                {
-                    // Step horizontal line, then vertical jump
-                    double prevPy = MapY(sorted[i - 1].Speed, plotTop, plotHeight);
-                    stepFigure.Segments.Add(new LineSegment(new Point(px, prevPy), true));
-                    fillFigure.Segments.Add(new LineSegment(new Point(px, prevPy), true));
-                }
+                // Step horizontal line, then vertical jump
+                double prevPy = MapY(sorted[i - 1].Speed, plotTop, plotHeight);
+                stepFigure.Segments.Add(new LineSegment(new Point(px, prevPy), true));
+                fillFigure.Segments.Add(new LineSegment(new Point(px, prevPy), true));
 
                 stepFigure.Segments.Add(new LineSegment(new Point(px, py), true));
                 fillFigure.Segments.Add(new LineSegment(new Point(px, py), true));
@@ -140,8 +171,8 @@ namespace ESPHomeFanController.Controls
                 StartPoint = new Point(0, 0),
                 EndPoint = new Point(0, 1)
             };
-            fillBrush.GradientStops.Add(new GradientStop(Color.FromArgb(50, 16, 185, 129), 0.0));
-            fillBrush.GradientStops.Add(new GradientStop(Color.FromArgb(5, 16, 185, 129), 1.0));
+            fillBrush.GradientStops.Add(new GradientStop(Color.FromArgb(60, _curveColor.R, _curveColor.G, _curveColor.B), 0.0));
+            fillBrush.GradientStops.Add(new GradientStop(Color.FromArgb(5, _curveColor.R, _curveColor.G, _curveColor.B), 1.0));
 
             var fillPath = new Path
             {
@@ -154,14 +185,14 @@ namespace ESPHomeFanController.Controls
             var curveLine = new Path
             {
                 Data = stepGeometry,
-                Stroke = new SolidColorBrush(Color.FromRgb(16, 185, 129)),
+                Stroke = new SolidColorBrush(_curveColor),
                 StrokeThickness = 2.5,
                 StrokeLineJoin = PenLineJoin.Round
             };
             GraphCanvas.Children.Add(curveLine);
 
             // 5. Draw Current Temperature Indicator (Vertical dashed line and glowing dot)
-            if (_currentTemp.HasValue && _currentTemp.Value >= MinTemp && _currentTemp.Value <= MaxTemp)
+            if (_currentTemp.HasValue && _currentTemp.Value >= 0.0 && _currentTemp.Value <= 120.0)
             {
                 double curX = MapX(_currentTemp.Value, plotLeft, plotWidth);
                 int activeSpeed = CalculateStepSpeed(_currentTemp.Value, sorted);
@@ -174,7 +205,7 @@ namespace ESPHomeFanController.Controls
                     Y1 = plotTop,
                     X2 = curX,
                     Y2 = plotTop + plotHeight,
-                    Stroke = new SolidColorBrush(Color.FromArgb(160, 244, 63, 94)),
+                    Stroke = new SolidColorBrush(_curveColor),
                     StrokeThickness = 1.5,
                     StrokeDashArray = new DoubleCollection { 3, 3 }
                 };
@@ -183,25 +214,64 @@ namespace ESPHomeFanController.Controls
                 // Operating point glowing dot
                 var halo = new Ellipse
                 {
-                    Width = 14,
-                    Height = 14,
-                    Fill = new SolidColorBrush(Color.FromArgb(60, 244, 63, 94))
+                    Width = 16,
+                    Height = 16,
+                    Fill = new SolidColorBrush(Color.FromArgb(80, _curveColor.R, _curveColor.G, _curveColor.B))
                 };
-                Canvas.SetLeft(halo, curX - 7);
-                Canvas.SetTop(halo, curY - 7);
+                Canvas.SetLeft(halo, curX - 8);
+                Canvas.SetTop(halo, curY - 8);
                 GraphCanvas.Children.Add(halo);
 
                 var dot = new Ellipse
                 {
                     Width = 8,
                     Height = 8,
-                    Fill = new SolidColorBrush(Color.FromRgb(244, 63, 94)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 1.5
+                    Fill = new SolidColorBrush(Colors.White),
+                    Stroke = new SolidColorBrush(_curveColor),
+                    StrokeThickness = 2
                 };
                 Canvas.SetLeft(dot, curX - 4);
                 Canvas.SetTop(dot, curY - 4);
                 GraphCanvas.Children.Add(dot);
+
+                // Floating Tooltip Badge above Operating Point (Matching Bento Reference Card)
+                var badgeBorder = new Border
+                {
+                    Background = new SolidColorBrush(_tooltipBg),
+                    BorderBrush = new SolidColorBrush(_tooltipBorder),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(8, 4, 8, 4)
+                };
+
+                var badgeStack = new StackPanel { Orientation = Orientation.Horizontal };
+                badgeStack.Children.Add(new TextBlock
+                {
+                    Text = $"{_currentTemp.Value:F1}°C",
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(_tooltipText),
+                    Margin = new Thickness(0, 0, 6, 0)
+                });
+                badgeStack.Children.Add(new TextBlock
+                {
+                    Text = activeSpeed == 0 ? "Off (0%)" : $"{activeSpeed}% Speed",
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(_tooltipText)
+                });
+
+                badgeBorder.Child = badgeStack;
+                badgeBorder.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double badgeW = badgeBorder.DesiredSize.Width > 0 ? badgeBorder.DesiredSize.Width : 90;
+                double badgeH = badgeBorder.DesiredSize.Height > 0 ? badgeBorder.DesiredSize.Height : 24;
+
+                double badgeLeft = Math.Clamp(curX - (badgeW / 2.0), plotLeft, plotLeft + plotWidth - badgeW);
+                double badgeTop = Math.Max(0, curY - badgeH - 10);
+
+                Canvas.SetLeft(badgeBorder, badgeLeft);
+                Canvas.SetTop(badgeBorder, badgeTop);
+                GraphCanvas.Children.Add(badgeBorder);
             }
 
             // 6. Draw Threshold Control Points
@@ -217,12 +287,12 @@ namespace ESPHomeFanController.Controls
                     // Outer glow ring
                     var glow = new Ellipse
                     {
-                        Width = 18,
-                        Height = 18,
-                        Fill = new SolidColorBrush(Color.FromArgb(80, 52, 211, 153))
+                        Width = 20,
+                        Height = 20,
+                        Fill = new SolidColorBrush(Color.FromArgb(80, _curveColor.R, _curveColor.G, _curveColor.B))
                     };
-                    Canvas.SetLeft(glow, px - 9);
-                    Canvas.SetTop(glow, py - 9);
+                    Canvas.SetLeft(glow, px - 10);
+                    Canvas.SetTop(glow, py - 10);
                     GraphCanvas.Children.Add(glow);
 
                     // Tooltip text above the point
@@ -232,9 +302,9 @@ namespace ESPHomeFanController.Controls
                         Text = label,
                         FontSize = 10,
                         FontWeight = FontWeights.Bold,
-                        Foreground = Brushes.White,
-                        Background = new SolidColorBrush(Color.FromArgb(200, 15, 23, 42)),
-                        Padding = new Thickness(4, 2, 4, 2)
+                        Foreground = new SolidColorBrush(_tooltipText),
+                        Background = new SolidColorBrush(_tooltipBg),
+                        Padding = new Thickness(6, 3, 6, 3)
                     };
                     Canvas.SetLeft(tb, Math.Clamp(px - 30, plotLeft, plotLeft + plotWidth - 60));
                     Canvas.SetTop(tb, Math.Max(0, py - 26));
@@ -246,9 +316,9 @@ namespace ESPHomeFanController.Controls
                 {
                     Width = isHovered ? 12 : 10,
                     Height = isHovered ? 12 : 10,
-                    Fill = isHovered ? new SolidColorBrush(Color.FromRgb(52, 211, 153)) : new SolidColorBrush(Color.FromRgb(16, 185, 129)),
-                    Stroke = Brushes.White,
-                    StrokeThickness = 2
+                    Fill = isHovered ? new SolidColorBrush(Colors.White) : new SolidColorBrush(Colors.White),
+                    Stroke = new SolidColorBrush(_curveColor),
+                    StrokeThickness = 2.5
                 };
                 Canvas.SetLeft(handle, px - (isHovered ? 6 : 5));
                 Canvas.SetTop(handle, py - (isHovered ? 6 : 5));
@@ -259,14 +329,15 @@ namespace ESPHomeFanController.Controls
         private static int CalculateStepSpeed(float cpuTemp, List<CurvePoint> sorted)
         {
             if (sorted.Count == 0) return 50;
-            if (cpuTemp <= sorted[0].Temperature) return sorted[0].Speed;
+            // Below first threshold (e.g. < 55°C): 0% speed (Fan OFF)
+            if (cpuTemp < sorted[0].Temperature) return 0;
             if (cpuTemp >= sorted[^1].Temperature) return sorted[^1].Speed;
 
             for (int i = 0; i < sorted.Count - 1; i++)
             {
-                if (cpuTemp > sorted[i].Temperature && cpuTemp <= sorted[i + 1].Temperature)
+                if (cpuTemp >= sorted[i].Temperature && cpuTemp < sorted[i + 1].Temperature)
                 {
-                    return sorted[i + 1].Speed;
+                    return sorted[i].Speed;
                 }
             }
             return sorted[^1].Speed;
@@ -274,8 +345,8 @@ namespace ESPHomeFanController.Controls
 
         private void DrawGrid(double plotLeft, double plotTop, double plotWidth, double plotHeight)
         {
-            var gridPen = new SolidColorBrush(Color.FromArgb(40, 148, 163, 184));
-            var textBrush = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+            var gridPen = new SolidColorBrush(_gridColor);
+            var textBrush = new SolidColorBrush(_axisTextColor);
 
             // Speed Horizontal Lines (0%, 25%, 50%, 75%, 100%)
             for (int s = 0; s <= 100; s += 25)

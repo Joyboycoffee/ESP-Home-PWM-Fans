@@ -6,56 +6,64 @@
         xmlns:controls="clr-namespace:ESPHomeFanController.Controls"
         mc:Ignorable="d"
         Title="ESPHome Fan Controller" 
-        Height="640" Width="980"
-        MinHeight="540" MinWidth="820"
-        Background="#0b0f19"
+        Height="800" 
+        Width="1020"
+        MinHeight="680"
+        MinWidth="880"
         WindowStartupLocation="CenterScreen"
-        Visibility="Hidden"
-        ShowInTaskbar="False"
+        Background="{DynamicResource BrushWindowBg}"
+        FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"
         Closing="Window_Closing"
         StateChanged="Window_StateChanged">
 
     <Window.Resources>
-        <!-- Fluent Card Style -->
-        <Style x:Key="FluentCard" TargetType="Border">
-            <Setter Property="Background" Value="#151d2f"/>
-            <Setter Property="BorderBrush" Value="#23304a"/>
+        <!-- Dynamic Theme Brushes (Updated at runtime by ApplyTheme) -->
+        <SolidColorBrush x:Key="BrushWindowBg" Color="#EFE8DC"/>
+        <SolidColorBrush x:Key="BrushSidebarBg" Color="#D5C7B3"/>
+        <SolidColorBrush x:Key="BrushSidebarBorder" Color="#C4B5A0"/>
+        <SolidColorBrush x:Key="BrushContainerBg" Color="#E7DED0"/>
+        <SolidColorBrush x:Key="BrushContainerBorder" Color="#D2C4B1"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#FAF7F2"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#E3D8C8"/>
+        <SolidColorBrush x:Key="BrushPillBg" Color="#EFE8DC"/>
+        <SolidColorBrush x:Key="BrushPillBorder" Color="#D8CDBC"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#2D2319"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#7D6F61"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#B68255"/>
+        <SolidColorBrush x:Key="BrushSecondaryBtnBg" Color="#E2D6C5"/>
+        <SolidColorBrush x:Key="BrushSecondaryBtnBorder" Color="#C6B6A0"/>
+        <SolidColorBrush x:Key="BrushSecondaryBtnText" Color="#35281E"/>
+        <SolidColorBrush x:Key="BrushPrimaryBtnBg" Color="#B68255"/>
+        <SolidColorBrush x:Key="BrushPrimaryBtnText" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BrushCircularBtnBg" Color="#D5C7B3"/>
+        <SolidColorBrush x:Key="BrushCircularBtnBorder" Color="#C4B5A0"/>
+        <SolidColorBrush x:Key="BrushCircularBtnIcon" Color="#35281E"/>
+        <SolidColorBrush x:Key="BrushNavInactiveText" Color="#6F6052"/>
+        <SolidColorBrush x:Key="BrushSubBadgeBg" Color="#EFE8DC"/>
+        <SolidColorBrush x:Key="BrushItemBg" Color="#EFE8DC"/>
+
+        <!-- Bento Card Style (20px CornerRadius, soft warm styling) -->
+        <Style x:Key="BentoCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="CornerRadius" Value="20"/>
             <Setter Property="Padding" Value="16"/>
         </Style>
 
-        <!-- Primary Button Style -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#10b981"/>
-            <Setter Property="Foreground" Value="#ffffff"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Height" Value="36"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#059669"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#047857"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <!-- Pill Status Badge Style -->
+        <Style x:Key="PillBadge" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource BrushPillBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushPillBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="10,5"/>
         </Style>
 
-        <!-- Secondary Button Style -->
-        <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#1e293b"/>
-            <Setter Property="Foreground" Value="#94a3b8"/>
+        <!-- Primary Pill Button -->
+        <Style x:Key="PrimaryPillButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushPrimaryBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushPrimaryBtnText}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Height" Value="32"/>
@@ -63,333 +71,606 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="#334155" BorderThickness="1" CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="16" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14,0"/>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#334155"/>
-                                <Setter Property="Foreground" Value="#ffffff"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- Modern Text Box -->
-        <Style x:Key="FluentTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#0f172a"/>
-            <Setter Property="Foreground" Value="#f8fafc"/>
-            <Setter Property="BorderBrush" Value="#334155"/>
+        <!-- Secondary Pill Button -->
+        <Style x:Key="SecondaryPillButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushSecondaryBtnBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushSecondaryBtnBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushSecondaryBtnText}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="16" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14,0"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sidebar Navigation Pill Button Style -->
+        <Style x:Key="NavPillButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushNavInactiveText}"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16" Padding="14,8" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Circular Action Button -->
+        <Style x:Key="CircularButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushCircularBtnBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCircularBtnBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushCircularBtnIcon}"/>
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="17" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern Pill Text Box -->
+        <Style x:Key="PillTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource BrushPillBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushPillBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Height" Value="36"/>
-            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="12,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16">
                             <ScrollViewer x:Name="PART_ContentHost" Focusable="false" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#10b981"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <!-- Slider Customization -->
-        <Style x:Key="FluentSlider" TargetType="Slider">
-            <Setter Property="Maximum" Value="100"/>
-            <Setter Property="Minimum" Value="0"/>
-            <Setter Property="TickFrequency" Value="1"/>
-            <Setter Property="IsSnapToTickEnabled" Value="True"/>
-            <Setter Property="Foreground" Value="#10b981"/>
-        </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <!-- Top Header -->
-            <RowDefinition Height="*"/>
-            <!-- Main Content -->
-        </Grid.RowDefinitions>
+    <!-- Outer Frame Layout: Sidebar + Bento Dashboard Area -->
+    <Grid Margin="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Top Header Area -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- App Title -->
-            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="10" Height="24" Background="#10b981" CornerRadius="3" Margin="0,0,10,0"/>
-                    <TextBlock Text="ESP HOME FAN CONTROLLER" 
-                               FontSize="20" 
-                               FontWeight="Bold" 
-                               Foreground="#ffffff" 
-                               FontFamily="Segoe UI Variable, Segoe UI, sans-serif"/>
-                </StackPanel>
-                <TextBlock Text="Ultra-low overhead hardware-synced PWM cooling controller" 
-                           FontSize="11" 
-                           Foreground="#64748b" 
-                           Margin="20,2,0,0"/>
-            </StackPanel>
-
-            <!-- Status Badges -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- LHM Badge -->
-                <Border x:Name="LhmBadge" 
-                        Background="#1e293b" 
-                        BorderBrush="#334155" 
-                        BorderThickness="1" 
-                        CornerRadius="16" 
-                        Padding="12,6" 
-                        Margin="0,0,10,0">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse x:Name="LhmStatusDot" Width="8" Height="8" Fill="#64748b" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="TxtLhmStatus" Text="HW Monitor: Inactive" FontSize="11" FontWeight="SemiBold" Foreground="#94a3b8"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ESP Status Badge -->
-                <Border x:Name="EspBadge" 
-                        Background="#1e293b" 
-                        BorderBrush="#334155" 
-                        BorderThickness="1" 
-                        CornerRadius="16" 
-                        Padding="12,6">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse x:Name="EspStatusDot" Width="8" Height="8" Fill="#ef4444" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="TxtEspStatus" Text="ESP: Disconnected" FontSize="11" FontWeight="SemiBold" Foreground="#94a3b8"/>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-        </Grid>
-
-        <!-- Main Content Area -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="380" MinWidth="340" MaxWidth="440"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Left Column: Gauges & Mode Controls -->
-            <Grid Grid.Column="0" Margin="0,0,16,0">
+        <!-- ==================== LEFT SIDEBAR ==================== -->
+        <Border x:Name="MainSidebarBorder" Grid.Column="0" Background="{DynamicResource BrushSidebarBg}" BorderBrush="{DynamicResource BrushSidebarBorder}" BorderThickness="1" CornerRadius="22" Margin="0,0,12,0" Padding="16">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- Gauges Card -->
                     <RowDefinition Height="*"/>
-                    <!-- Mode & Manual Controls Card -->
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Gauges Card -->
-                <Border Grid.Row="0" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- CPU Temperature Gauge -->
-                        <controls:CircularGauge x:Name="CpuGauge" 
-                                                Grid.Column="0" 
-                                                Title="CPU TEMP" 
-                                                Unit="°C" 
-                                                Minimum="20" 
-                                                Maximum="90" 
-                                                Height="160"
-                                                ArcColor="#f59e0b"
-                                                ArcEndColor="#ef4444"/>
-
-                        <!-- Fan Speed Gauge -->
-                        <controls:CircularGauge x:Name="FanGauge" 
-                                                Grid.Column="1" 
-                                                Title="FAN SPEED" 
-                                                Unit="%" 
-                                                Minimum="0" 
-                                                Maximum="100" 
-                                                Height="160"
-                                                ArcColor="#8b5cf6"
-                                                ArcEndColor="#06b6d4"/>
-                    </Grid>
-                </Border>
-
-                <!-- Mode & Control Card -->
-                <Border Grid.Row="1" Style="{StaticResource FluentCard}">
-                    <StackPanel VerticalAlignment="Top">
-                        <TextBlock Text="Cooling Automation &amp; Speed" 
-                                   FontSize="14" 
-                                   FontWeight="Bold" 
-                                   Foreground="#e2e8f0" 
-                                   Margin="0,0,0,12"/>
-
-                        <!-- Automation Switch Row -->
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock Text="Temperature Curve Auto" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc"/>
-                                <TextBlock Text="Dynamic step adjustments based on curve" FontSize="11" Foreground="#64748b"/>
-                            </StackPanel>
-                            <controls:ToggleSwitch x:Name="AutoSwitch" Grid.Column="1" VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <Separator Background="#23304a" Margin="0,0,0,14"/>
-
-                        <!-- Manual Speed Slider Area -->
-                        <StackPanel Margin="0,0,0,14">
-                            <Grid Margin="0,0,0,6">
-                                <TextBlock Text="Manual Speed Override" FontSize="12" FontWeight="SemiBold" Foreground="#94a3b8"/>
-                                <TextBlock x:Name="TxtManualPercent" Text="0%" FontSize="12" FontWeight="Bold" Foreground="#10b981" HorizontalAlignment="Right"/>
-                            </Grid>
-                            <Slider x:Name="SpeedSlider" 
-                                    Style="{StaticResource FluentSlider}"
-                                    ValueChanged="SpeedSlider_ValueChanged"
-                                    PreviewMouseLeftButtonUp="SpeedSlider_PreviewMouseLeftButtonUp"/>
-                        </StackPanel>
-
-                        <Separator Background="#23304a" Margin="0,0,0,14"/>
-
-                        <!-- Full Speed Override Toggle -->
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <TextBlock Text="100% Safety Full Speed" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc"/>
-                                <TextBlock Text="Forces 100% duty cycle immediately" FontSize="11" Foreground="#64748b"/>
-                            </StackPanel>
-                            <controls:ToggleSwitch x:Name="OverrideSwitch" Grid.Column="1" VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <!-- Logic Status Pill -->
-                        <Border Background="#111827" BorderBrush="#1f2937" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,6,0,0">
-                            <TextBlock x:Name="TxtLogicStatus" 
-                                       Text="Initializing logic controller..." 
-                                       FontSize="12" 
-                                       FontWeight="SemiBold" 
-                                       Foreground="#10b981" 
-                                       TextWrapping="Wrap"/>
+                <!-- Brand Header -->
+                <StackPanel Grid.Row="0" Margin="0,4,0,20">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="BrandIconBadge" Width="28" Height="28" CornerRadius="8" Margin="0,0,10,0" Background="{DynamicResource BrushAccent}">
+                            <Path Data="M 7,14 L 14,7 L 21,14 L 14,21 Z" Fill="#FFFFFF" Stretch="Uniform" Margin="6"/>
                         </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtBrandTitle" Text="ESPHome" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <TextBlock x:Name="TxtBrandSubtitle" Text="FAN CONTROL" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,1,0,0"/>
+                        </StackPanel>
                     </StackPanel>
-                </Border>
-            </Grid>
+                </StackPanel>
 
-            <!-- Right Column: Details, Graph, & Connection Settings -->
-            <Grid Grid.Column="1">
+                <!-- Interactive Navigation Links -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Top">
+                    <!-- Nav 1: Dashboard -->
+                    <Button x:Name="BtnNavDashboard" Style="{StaticResource NavPillButton}" Click="BtnNavDashboard_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="IconNavDashboard" Data="M 2,2 L 9,2 L 9,9 L 2,9 Z M 11,2 L 18,2 L 18,9 L 11,9 Z M 2,11 L 9,11 L 9,18 L 2,18 Z M 11,11 L 18,11 L 18,18 L 11,18 Z" 
+                                  Fill="{DynamicResource BrushTextPrimary}" Stretch="Uniform" Width="14" Height="14" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="TxtNavDashboard" Text="Dashboard" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Nav 2: Fan Curves -->
+                    <Button x:Name="BtnNavCurves" Style="{StaticResource NavPillButton}" Click="BtnNavCurves_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="IconNavCurves" Data="M 2,16 L 8,10 L 12,14 L 18,6" Stroke="{DynamicResource BrushNavInactiveText}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Stretch="Uniform" Width="14" Height="14" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="TxtNavCurves" Text="Fan Curves" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushNavInactiveText}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Nav 3: ESP Device -->
+                    <Button x:Name="BtnNavDevice" Style="{StaticResource NavPillButton}" Click="BtnNavDevice_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="IconNavDevice" Data="M 4,4 L 16,4 L 16,16 L 4,16 Z M 7,16 L 7,18 M 13,16 L 13,18" Stroke="{DynamicResource BrushNavInactiveText}" StrokeThickness="1.8" Stretch="Uniform" Width="14" Height="14" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="TxtNavDevice" Text="ESP Device" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushNavInactiveText}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Nav 4: Telemetry -->
+                    <Button x:Name="BtnNavTelemetry" Style="{StaticResource NavPillButton}" Click="BtnNavTelemetry_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="IconNavTelemetry" Data="M 10,2 A 8,8 0 1 0 18,10" Stroke="{DynamicResource BrushNavInactiveText}" StrokeThickness="1.8" Stretch="Uniform" Width="14" Height="14" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="TxtNavTelemetry" Text="Telemetry" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushNavInactiveText}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Pinned Bottom Actions: Web Console & Exit Application -->
+                <StackPanel Grid.Row="2" VerticalAlignment="Bottom">
+                    <Separator x:Name="SidebarSep" Background="{DynamicResource BrushSidebarBorder}" Margin="0,0,0,12"/>
+
+                    <Button x:Name="BtnWebConsole" Style="{StaticResource SecondaryPillButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8" Click="BtnWebConsole_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <Path Data="M 10,2 A 8,8 0 1 0 10,18 A 8,8 0 1 0 10,2 Z M 2,10 L 18,10 M 10,2 C 12,5 13,8 13,10 C 13,12 12,15 10,18 C 8,15 7,12 7,10 C 7,8 8,5 10,2 Z" 
+                                  Stroke="{DynamicResource BrushTextPrimary}" StrokeThickness="1.5" Stretch="Uniform" Width="13" Height="13" Margin="0,0,8,0"/>
+                            <TextBlock Text="Web Console" FontWeight="SemiBold" Foreground="{DynamicResource BrushSecondaryBtnText}"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="BtnExitApp" Style="{StaticResource SecondaryPillButton}" HorizontalAlignment="Stretch" Click="BtnExitApp_Click">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <Path Data="M 10,3 L 10,9 M 5,6 A 6,6 0 1 0 15,6" Stroke="#c45b4b" StrokeThickness="1.8" StrokeStartLineCap="Round" Stretch="Uniform" Width="12" Height="12" Margin="0,0,8,0"/>
+                            <TextBlock Text="Exit" FontWeight="SemiBold" Foreground="{DynamicResource BrushSecondaryBtnText}"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== MAIN CONTENT CONTAINER ==================== -->
+        <Border x:Name="MainContentBorder" Grid.Column="1" Background="{DynamicResource BrushContainerBg}" BorderBrush="{DynamicResource BrushContainerBorder}" BorderThickness="1" CornerRadius="22" Padding="18">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- Device Details Card -->
                     <RowDefinition Height="*"/>
-                    <!-- Curve Graph Card -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Connection Settings Card -->
                 </Grid.RowDefinitions>
 
-                <!-- Device Details Card -->
-                <Border Grid.Row="0" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
-                    <Grid>
+                <!-- 1. TOP HEADER BAR -->
+                <Grid Grid.Row="0" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Title & Subtitle (Clean & Minimalist) -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtHeaderTitle" Text="Thermal Management" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock x:Name="TxtHeaderSubtitle" Text="Ryzen 5 7600X • RTX 3070" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Header Status Badges & Controls -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- SENSING BADGE -->
+                        <Border x:Name="SensingBadge" Style="{StaticResource PillBadge}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse x:Name="SensingStatusDot" Width="7" Height="7" Fill="#4ade80" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="TxtSensingStatus" Text="Sensing Active" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ESP BADGE -->
+                        <Border x:Name="EspBadge" Style="{StaticResource PillBadge}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse x:Name="EspStatusDot" Width="7" Height="7" Fill="#ef4444" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="TxtEspStatus" Text="ESP: Disconnected" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Reconnect Button -->
+                        <Button x:Name="BtnReconnect" Style="{StaticResource CircularButton}" Click="BtnReconnect_Click" ToolTip="Force Reconnect">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24" RenderTransformOrigin="0.5,0.5">
+                                    <Canvas.RenderTransform>
+                                        <RotateTransform x:Name="ReconnectRotation" Angle="0"/>
+                                    </Canvas.RenderTransform>
+                                    <Path x:Name="PathReconnect" Fill="{DynamicResource BrushCircularBtnIcon}" Data="M 17.65,6.35 C 16.2,4.9 14.21,4 12,4 C 7.58,4 4.01,7.58 4.01,12 C 4.01,16.42 7.58,20 12,20 C 15.73,20 18.84,17.45 19.73,14 L 17.65,14 C 16.83,16.33 14.61,18 12,18 C 8.69,18 6,15.31 6,12 C 6,8.69 8.69,6 12,6 C 13.66,6 15.14,6.69 16.22,7.78 L 13,11 L 20,11 L 20,4 L 17.65,6.35 Z"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+
+                        <!-- Theme Switcher Button -->
+                        <Button x:Name="BtnThemeToggle" Style="{StaticResource CircularButton}" Margin="6,0,0,0" Click="BtnThemeToggle_Click" ToolTip="Toggle Theme">
+                            <Viewbox Width="14" Height="14">
+                                <Canvas Width="24" Height="24">
+                                    <Path x:Name="IconTheme" Fill="{DynamicResource BrushCircularBtnIcon}" Data="M 12,3 C 7.03,3 3,7.03 3,12 C 3,16.97 7.03,21 12,21 C 12.83,21 13.5,20.33 13.5,19.5 C 13.5,19.11 13.35,18.76 13.11,18.49 C 12.88,18.23 12.73,17.88 12.73,17.5 C 12.73,16.67 13.4,16 14.23,16 L 16,16 C 18.76,16 21,13.76 21,11 C 21,6.58 16.97,3 12,3 Z M 6.5,12 C 5.67,12 5,11.33 5,10.5 C 5,9.67 5.67,9 6.5,9 C 7.33,9 8,9.67 8,10.5 C 8,11.33 7.33,12 6.5,12 Z M 9.5,8 C 8.67,8 8,7.33 8,6.5 C 8,5.67 8.67,5 9.5,5 C 10.33,5 11,5.67 11,6.5 C 11,7.33 10.33,8 9.5,8 Z M 14.5,8 C 13.67,8 13,7.33 13,6.5 C 13,5.67 13.67,5 14.5,5 C 15.33,5 16,5.67 16,6.5 C 16,7.33 15.33,8 14.5,8 Z M 17.5,12 C 16.67,12 16,11.33 16,10.5 C 16,9.67 16.67,9 17.5,9 C 18.33,9 19,9.67 19,10.5 C 19,11.33 18.33,12 17.5,12 Z"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ==================== VIEW 1: DASHBOARD ==================== -->
+                <Grid x:Name="ViewDashboard" Grid.Row="1" Visibility="Visible">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top Row: 3 Bento Cards -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="1.15*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Fan Entity Status -->
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="FAN ENTITY" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
-                            <TextBlock x:Name="TxtFanState" Text="Silent Fan (OFF)" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
-                        </StackPanel>
+                        <!-- CARD 1: CPU -->
+                        <Border x:Name="CardCpu" Grid.Column="0" Style="{StaticResource BentoCard}" Margin="0,0,10,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                        <!-- WiFi Signal -->
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="WIFI RSSI" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
-                            <TextBlock x:Name="TxtWifiSignal" Text="-- dBm" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
-                        </StackPanel>
+                                <Grid Grid.Row="0">
+                                    <TextBlock x:Name="TxtCpuCardTitle" Text="CPU" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <Border x:Name="BadgeCpu" Style="{StaticResource PillBadge}" HorizontalAlignment="Right" Padding="8,2">
+                                        <TextBlock Text="7600X" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
+                                    </Border>
+                                </Grid>
 
-                        <!-- Uptime -->
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="DEVICE UPTIME" FontSize="10" FontWeight="SemiBold" Foreground="#64748b"/>
-                            <TextBlock x:Name="TxtUptime" Text="--" FontSize="13" FontWeight="Bold" Foreground="#f8fafc" Margin="0,2,0,0"/>
-                        </StackPanel>
+                                <controls:CircularGauge x:Name="CpuGauge" 
+                                                        Grid.Row="1"
+                                                        Title="TCTL / TDIE" 
+                                                        Unit="°C" 
+                                                        Minimum="0" 
+                                                        Maximum="100" 
+                                                        Height="140"/>
 
-                        <!-- Web Console Action -->
-                        <Button Grid.Column="3" 
-                                Content="Web Console" 
-                                Style="{StaticResource SecondaryButton}" 
-                                Padding="12,0" 
-                                Click="BtnWebConsole_Click"/>
+                                <Border x:Name="SubBadgeCpu" Grid.Row="2" Background="{DynamicResource BrushSubBadgeBg}" CornerRadius="10" Padding="8,4" Margin="0,2,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Ellipse Width="6" Height="6" Fill="#4ade80" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Zen 4 Active" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- CARD 2: GPU -->
+                        <Border x:Name="CardGpu" Grid.Column="1" Style="{StaticResource BentoCard}" Margin="0,0,10,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <TextBlock x:Name="TxtGpuCardTitle" Text="GPU" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <Border x:Name="BadgeGpu" Style="{StaticResource PillBadge}" HorizontalAlignment="Right" Padding="8,2">
+                                        <TextBlock Text="RTX 3070" FontSize="10" FontWeight="SemiBold" Foreground="#16a34a"/>
+                                    </Border>
+                                </Grid>
+
+                                <controls:CircularGauge x:Name="GpuGauge" 
+                                                        Grid.Row="1"
+                                                        Title="GPU CORE" 
+                                                        Unit="°C" 
+                                                        Minimum="0" 
+                                                        Maximum="100" 
+                                                        Height="140"/>
+
+                                <Border x:Name="SubBadgeGpu" Grid.Row="2" Background="{DynamicResource BrushSubBadgeBg}" CornerRadius="10" Padding="8,4" Margin="0,2,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Ellipse Width="6" Height="6" Fill="#4ade80" Margin="0,0,6,0"/>
+                                        <TextBlock Text="NVAPI Active" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- CARD 3: COOLING CONTROLS (Simplified) -->
+                        <Border x:Name="CardControls" Grid.Column="2" Style="{StaticResource BentoCard}">
+                            <StackPanel VerticalAlignment="Top">
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock x:Name="TxtControlsCardTitle" Text="COOLING" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="TxtFanState" Text="Auto (50%)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" HorizontalAlignment="Right"/>
+                                </Grid>
+
+                                <!-- Toggle 1: Auto Curve -->
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock x:Name="TxtAutoTitle" Text="Auto Curve" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    <controls:ToggleSwitch x:Name="AutoSwitch" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Toggle 2: Full Speed (100%) -->
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock x:Name="TxtOverrideTitle" Text="Full Speed (100%)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    <controls:ToggleSwitch x:Name="OverrideSwitch" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Slider: Manual Speed -->
+                                <StackPanel Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,2">
+                                        <TextBlock x:Name="TxtManualTitle" Text="Manual Speed" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock x:Name="TxtManualPercent" Text="50%" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Slider x:Name="SpeedSlider" 
+                                            Maximum="100" Minimum="0" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            ValueChanged="SpeedSlider_ValueChanged"
+                                            PreviewMouseLeftButtonUp="SpeedSlider_PreviewMouseLeftButtonUp"/>
+                                </StackPanel>
+
+                                <!-- Status Badge (Clean 1-line) -->
+                                <Border x:Name="LogicStatusBadge" Background="{DynamicResource BrushSubBadgeBg}" BorderBrush="{DynamicResource BrushPillBorder}" BorderThickness="1" CornerRadius="10" Padding="8,6">
+                                    <TextBlock x:Name="TxtLogicStatus" 
+                                               Text="Auto: 55°C → 50% Speed" 
+                                               FontSize="11" 
+                                               FontWeight="SemiBold" 
+                                               Foreground="{DynamicResource BrushAccent}" 
+                                               TextAlignment="Center"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
                     </Grid>
-                </Border>
 
-                <!-- Curve Graph Card -->
-                <Border Grid.Row="1" Style="{StaticResource FluentCard}" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                    <!-- Bottom Full-Width Step Curve Card -->
+                    <Border x:Name="CardDashboardCurve" Grid.Row="1" Style="{StaticResource BentoCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                        <Grid Grid.Row="0" Margin="0,0,0,8">
-                            <TextBlock Text="Temperature / Fan Speed Step Curve" 
-                                       FontSize="14" 
-                                       FontWeight="Bold" 
-                                       Foreground="#e2e8f0"/>
-                            <TextBlock Text="Drag cyan control points to calibrate thresholds" 
-                                       FontSize="11" 
-                                       Foreground="#64748b" 
-                                       HorizontalAlignment="Right" 
-                                       VerticalAlignment="Center"/>
+                            <!-- Presets Header Bar -->
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="TxtCurveCardTitle" Grid.Column="0" Text="Fan Speed Curve" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="BtnPresetSilent" Content="Silent" Style="{StaticResource SecondaryPillButton}" Height="28" Margin="0,0,6,0" Padding="12,0" FontSize="11" Click="BtnPresetSilent_Click"/>
+                                    <Button x:Name="BtnPresetStandard" Content="Standard (55°C)" Style="{StaticResource PrimaryPillButton}" Height="28" Margin="0,0,6,0" Padding="12,0" FontSize="11" Click="BtnPresetStandard_Click"/>
+                                    <Button x:Name="BtnPresetAggressive" Content="Performance" Style="{StaticResource SecondaryPillButton}" Height="28" Padding="12,0" FontSize="11" Click="BtnPresetAggressive_Click"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Step Curve Graph -->
+                            <controls:FanCurveGraph x:Name="CurveGraph" Grid.Row="1" Margin="0,0,0,6"/>
+
+                            <!-- Quick Connection Footer (Simplified) -->
+                            <Grid Grid.Row="2" Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="TxtHostLabel" Grid.Column="0" Text="Host:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox x:Name="TxtIpAddress" Grid.Column="1" Style="{StaticResource PillTextBox}" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnConnect" Grid.Column="2" Content="Connect" Style="{StaticResource PrimaryPillButton}" Width="90" Margin="0,0,12,0" Click="BtnConnect_Click"/>
+
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border x:Name="BadgeRssi" Style="{StaticResource PillBadge}" Margin="0,0,6,0" Padding="8,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="RSSI: " FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                            <TextBlock x:Name="TxtWifiSignal" Text="-- dBm" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border x:Name="BadgeUptime" Style="{StaticResource PillBadge}" Padding="8,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Uptime: " FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                            <TextBlock x:Name="TxtUptime" Text="--" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
                         </Grid>
+                    </Border>
+                </Grid>
 
-                        <controls:FanCurveGraph x:Name="CurveGraph" Grid.Row="1"/>
-                    </Grid>
-                </Border>
+                <!-- ==================== VIEW 2: FAN CURVES (Studio) ==================== -->
+                <Grid x:Name="ViewFanCurves" Grid.Row="1" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <!-- Connection Settings Card -->
-                <Border Grid.Row="2" Style="{StaticResource FluentCard}">
+                    <Border x:Name="CardCurvesEditor" Grid.Row="0" Style="{StaticResource BentoCard}" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Fan Curve Editor" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="Silent" Style="{StaticResource SecondaryPillButton}" Height="28" Margin="0,0,6,0" Padding="12,0" FontSize="11" Click="BtnPresetSilent_Click"/>
+                                    <Button Content="Standard" Style="{StaticResource PrimaryPillButton}" Height="28" Margin="0,0,6,0" Padding="12,0" FontSize="11" Click="BtnPresetStandard_Click"/>
+                                    <Button Content="Performance" Style="{StaticResource SecondaryPillButton}" Height="28" Margin="0,0,6,0" Padding="12,0" FontSize="11" Click="BtnPresetAggressive_Click"/>
+                                    <Button x:Name="BtnResetDefaults" Content="Reset" Style="{StaticResource SecondaryPillButton}" Height="28" Padding="12,0" FontSize="11" Click="BtnResetDefaults_Click"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <controls:FanCurveGraph x:Name="CurveGraphLarge" Grid.Row="1"/>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="CardCurvesPoints" Grid.Row="1" Style="{StaticResource BentoCard}">
+                        <StackPanel>
+                            <TextBlock Text="THRESHOLD NODES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                            <UniformGrid x:Name="ThresholdsEditorGrid" Columns="5" Margin="0,0,0,2"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ==================== VIEW 3: ESP32 DEVICE ==================== -->
+                <Grid x:Name="ViewDevice" Grid.Row="1" Visibility="Collapsed">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" 
-                                   Text="ESP Host Address:" 
-                                   FontSize="13" 
-                                   FontWeight="SemiBold" 
-                                   Foreground="#94a3b8" 
-                                   VerticalAlignment="Center" 
-                                   Margin="0,0,14,0"/>
+                        <Border x:Name="CardDeviceLeft" Grid.Column="0" Style="{StaticResource BentoCard}" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="DEVICE SETTINGS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,12"/>
 
-                        <TextBox x:Name="TxtIpAddress" 
-                                 Grid.Column="1" 
-                                 Style="{StaticResource FluentTextBox}" 
-                                 Margin="0,0,12,0"/>
+                                <TextBlock Text="IP Address" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtDeviceHost" Style="{StaticResource PillTextBox}" Margin="0,0,0,10"/>
 
-                        <Button x:Name="BtnConnect" 
-                                Grid.Column="2" 
-                                Content="Connect Device" 
-                                Style="{StaticResource PrimaryButton}" 
-                                Width="140" 
-                                Click="BtnConnect_Click"/>
+                                <TextBlock Text="Port" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtDevicePort" Style="{StaticResource PillTextBox}" Text="80" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Username" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtDeviceUser" Style="{StaticResource PillTextBox}" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Password" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtDevicePass" Style="{StaticResource PillTextBox}" Margin="0,0,0,14"/>
+
+                                <Button x:Name="BtnDeviceSaveConnect" Content="Save &amp; Reconnect" Style="{StaticResource PrimaryPillButton}" Height="34" Click="BtnDeviceSaveConnect_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CardDeviceRight" Grid.Column="1" Style="{StaticResource BentoCard}" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="DEVICE STATUS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,12"/>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,8" Margin="0,0,0,8">
+                                    <Grid>
+                                        <TextBlock Text="Connection" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock x:Name="TxtDeviceState" Text="Connected" FontSize="11" FontWeight="Bold" Foreground="#16a34a" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,8" Margin="0,0,0,8">
+                                    <Grid>
+                                        <TextBlock Text="Wi-Fi Signal" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock x:Name="TxtDeviceWifi" Text="-- dBm" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,8" Margin="0,0,0,12">
+                                    <Grid>
+                                        <TextBlock Text="Uptime" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock x:Name="TxtDeviceUptime" Text="--" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Text="Actions" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                                <Button Content="Web Console" Style="{StaticResource SecondaryPillButton}" Height="32" Margin="0,0,0,8" Click="BtnWebConsole_Click"/>
+                                <Button x:Name="BtnDeviceFan100" Content="Test Full Speed" Style="{StaticResource SecondaryPillButton}" Height="32" Margin="0,0,0,8" Click="BtnDeviceFan100_Click"/>
+                                <Button x:Name="BtnDeviceFan0" Content="Test Fan Off" Style="{StaticResource SecondaryPillButton}" Height="32" Click="BtnDeviceFan0_Click"/>
+                            </StackPanel>
+                        </Border>
                     </Grid>
-                </Border>
+                </Grid>
+
+                <!-- ==================== VIEW 4: TELEMETRY ==================== -->
+                <Grid x:Name="ViewTelemetry" Grid.Row="1" Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="CardTelemLeft" Grid.Column="0" Style="{StaticResource BentoCard}" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="HARDWARE SENSORS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,12"/>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="CPU Hardware" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock Text="AMD Ryzen 5 7600X" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,2"/>
+                                        <TextBlock x:Name="TxtTelemCpu" Text="Tctl/Tdie: -- °C" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="GPU Hardware" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock Text="NVIDIA GeForce RTX 3070" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,2"/>
+                                        <TextBlock x:Name="TxtTelemGpu" Text="GPU Core: -- °C" FontSize="11" FontWeight="SemiBold" Foreground="#16a34a"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Kernel Driver" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock Text="LibreHardwareMonitorLib Native" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,1"/>
+                                        <TextBlock Text="Low Overhead Active" FontSize="10" Foreground="#16a34a"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CardTelemRight" Grid.Column="1" Style="{StaticResource BentoCard}" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="SYSTEM HEALTH" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,12"/>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10" Margin="0,0,0,8">
+                                    <Grid>
+                                        <StackPanel>
+                                            <TextBlock Text="RAM Footprint" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                            <TextBlock x:Name="TxtTelemRam" Text="-- MB" FontSize="18" FontWeight="Bold" Foreground="#16a34a" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <Border Style="{StaticResource PillBadge}" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <TextBlock Text="Optimized" FontSize="10" FontWeight="Bold" Foreground="#16a34a"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <TextBlock Text="Fan Dispatch" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock x:Name="TxtTelemFan" Text="Commanded Speed: --" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,1"/>
+                                        <TextBlock x:Name="TxtTelemDecision" Text="Decision: --" FontSize="11" Foreground="{DynamicResource BrushAccent}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Background="{DynamicResource BrushItemBg}" CornerRadius="12" Padding="12,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Memory Optimization" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <TextBlock Text="Auto Trimming Active (15s)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,1"/>
+                                        <TextBlock Text="Keeps RAM usage minimal" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
             </Grid>
-        </Grid>
+        </Border>
     </Grid>
 </Window>

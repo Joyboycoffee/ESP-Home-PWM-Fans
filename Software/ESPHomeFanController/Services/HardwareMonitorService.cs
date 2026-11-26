@@ -1,205 +1,472 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Management;
-using System.Net.Http;
-using System.Text.Json;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using LibreHardwareMonitor.Hardware;
 
 namespace ESPHomeFanController.Services
 {
-    public class HardwareMonitorService
+    public class HardwareMonitorService : IDisposable
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _lhmUrl = "http://localhost:8085/data.json";
-        private float? _cachedTemperature;
-        private DateTime _lastFetchTime = DateTime.MinValue;
-        private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(1.5);
-        private bool _isLhmRunning;
+        private Computer? _computer;
+        private readonly CancellationTokenSource _cts = new();
+        private Task? _pollingTask;
+        private readonly object _pollLock = new();
+        private DateTime _lastReopenAttempt = DateTime.MinValue;
 
-        public event Action<float>? TemperatureUpdated;
-        public event Action<bool>? LhmStatusChanged;
+        private float? _cachedCpuTemperature;
+        private float? _cachedGpuTemperature;
+        private float? _smoothedCpuTemperature;
+        private float? _smoothedGpuTemperature;
+        private const float SmoothingAlpha = 0.35f;
+        private string _gpuName = "NVIDIA RTX 3070";
+        private bool _isActive;
 
-        public bool IsLhmRunning => _isLhmRunning;
-        public float? CurrentTemperature => _cachedTemperature;
+        public event Action<float>? CpuTemperatureUpdated;
+        public event Action<float>? GpuTemperatureUpdated;
+        public event Action<float>? TemperatureUpdated; // Backward compatibility for CPU subscribers
+        public event Action<bool>? LhmStatusChanged;     // Keeps HW Monitor status badge working
+
+        public bool IsLhmRunning => _isActive;
+        public float? CurrentTemperature => _cachedCpuTemperature;
+        public float? CurrentCpuTemperature => _cachedCpuTemperature;
+        public float? CurrentGpuTemperature => _cachedGpuTemperature;
+        public string GpuName => _gpuName;
 
         public HardwareMonitorService()
         {
-            var handler = new SocketsHttpHandler
+            try
             {
-                ConnectTimeout = TimeSpan.FromMilliseconds(800),
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
-            };
-            _httpClient = new HttpClient(handler)
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+            }
+            catch { }
+
+            EnsureRing0Opened();
+
+            try
             {
-                Timeout = TimeSpan.FromMilliseconds(1200)
-            };
+                _computer = CreateComputer();
+                _computer.Open();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[HardwareMonitor] Failed to open Computer: {ex.Message}");
+            }
+
+            _pollingTask = Task.Run(() => PollingLoopAsync(_cts.Token));
         }
 
-        public async Task<float?> FetchCpuTemperatureAsync(CancellationToken cancellationToken = default)
+        private static Computer CreateComputer()
         {
-            if (DateTime.UtcNow - _lastFetchTime < _cacheDuration && _cachedTemperature.HasValue)
+            return new Computer
             {
-                return _cachedTemperature;
-            }
-
-            float? temp = await FetchFromLhmAsync(cancellationToken);
-
-            if (!temp.HasValue)
-            {
-                // Fallback to WMI if LHM is not providing data
-                temp = FetchFromWmi();
-            }
-
-            if (temp.HasValue)
-            {
-                _cachedTemperature = temp.Value;
-                _lastFetchTime = DateTime.UtcNow;
-                TemperatureUpdated?.Invoke(temp.Value);
-            }
-
-            return _cachedTemperature;
+                IsCpuEnabled = true,
+                IsGpuEnabled = true,
+                IsMotherboardEnabled = true, // Enables SuperIO (IT8689E) detection
+                IsMemoryEnabled = false,
+                IsNetworkEnabled = false,
+                IsStorageEnabled = false,
+                IsControllerEnabled = false
+            };
         }
 
-        private async Task<float?> FetchFromLhmAsync(CancellationToken cancellationToken)
+        private static void EnsureRing0Opened()
         {
             try
             {
-                using var response = await _httpClient.GetAsync(_lhmUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                if (response.IsSuccessStatusCode)
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+                var ring0Type = typeof(Computer).Assembly.GetType("LibreHardwareMonitor.Hardware.Ring0");
+                if (ring0Type != null)
                 {
-                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-
-                    float? extractedTemp = ExtractCpuTemperature(doc.RootElement);
-                    if (extractedTemp.HasValue)
+                    var isOpenP = ring0Type.GetProperty("IsOpen", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                    bool isOpen = (bool)(isOpenP?.GetValue(null) ?? false);
+                    if (!isOpen)
                     {
-                        SetLhmStatus(true);
-                        return extractedTemp;
-                    }
-                }
-            }
-            catch
-            {
-                // LHM not running or timed out
-            }
-
-            SetLhmStatus(false);
-            return null;
-        }
-
-        private void SetLhmStatus(bool running)
-        {
-            if (_isLhmRunning != running)
-            {
-                _isLhmRunning = running;
-                LhmStatusChanged?.Invoke(running);
-            }
-        }
-
-        private float? ExtractCpuTemperature(JsonElement element)
-        {
-            try
-            {
-                if (element.TryGetProperty("Children", out var computers) && computers.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var computer in computers.EnumerateArray())
-                    {
-                        if (computer.TryGetProperty("Children", out var hardwareList) && hardwareList.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var hardware in hardwareList.EnumerateArray())
-                            {
-                                string text = hardware.TryGetProperty("Text", out var t) ? t.GetString() ?? "" : "";
-                                if (text.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
-                                    text.Contains("Ryzen", StringComparison.OrdinalIgnoreCase) ||
-                                    text.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                                    text.Contains("Intel", StringComparison.OrdinalIgnoreCase) ||
-                                    text.Contains("AMD", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    if (hardware.TryGetProperty("Children", out var sensorGroups) && sensorGroups.ValueKind == JsonValueKind.Array)
-                                    {
-                                        foreach (var group in sensorGroups.EnumerateArray())
-                                        {
-                                            string groupText = group.TryGetProperty("Text", out var gt) ? gt.GetString() ?? "" : "";
-                                            if (groupText.Equals("Temperatures", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                if (group.TryGetProperty("Children", out var sensors) && sensors.ValueKind == JsonValueKind.Array)
-                                                {
-                                                    float? fallbackCoreTemp = null;
-                                                    foreach (var sensor in sensors.EnumerateArray())
-                                                    {
-                                                        string sensorName = sensor.TryGetProperty("Text", out var st) ? st.GetString() ?? "" : "";
-                                                        string valStr = sensor.TryGetProperty("Value", out var v) ? v.GetString() ?? "" : "";
-
-                                                        if (TryParseTemperature(valStr, out float val))
-                                                        {
-                                                            // Prioritize Package / Tctl/Tdie
-                                                            if (sensorName.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
-                                                                sensorName.Contains("Tctl", StringComparison.OrdinalIgnoreCase) ||
-                                                                sensorName.Contains("Tdie", StringComparison.OrdinalIgnoreCase) ||
-                                                                sensorName.Contains("Average", StringComparison.OrdinalIgnoreCase))
-                                                            {
-                                                                return val;
-                                                            }
-
-                                                            if (!fallbackCoreTemp.HasValue && sensorName.Contains("Core", StringComparison.OrdinalIgnoreCase))
-                                                            {
-                                                                fallbackCoreTemp = val;
-                                                            }
-                                                        }
-                                                    }
-
-                                                    if (fallbackCoreTemp.HasValue)
-                                                        return fallbackCoreTemp;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        var openM = ring0Type.GetMethod("Open", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+                        openM?.Invoke(null, null);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[LHM Parse Error] {ex.Message}");
+                Debug.WriteLine($"[HardwareMonitor] EnsureRing0Opened error: {ex.Message}");
+            }
+        }
+
+        private void TryReopenComputerIfStale()
+        {
+            if ((DateTime.Now - _lastReopenAttempt).TotalSeconds < 5) return;
+            _lastReopenAttempt = DateTime.Now;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    EnsureRing0Opened();
+                    lock (_pollLock)
+                    {
+                        _computer?.Close();
+                        _computer = CreateComputer();
+                        _computer.Open();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[HardwareMonitor] Reopen error: {ex.Message}");
+                }
+            });
+        }
+
+        private async Task PollingLoopAsync(CancellationToken token)
+        {
+            // Initial poll immediately
+            PollSensors();
+
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(1750, token);
+                    PollSensors();
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[HardwareMonitor] Loop error: {ex.Message}");
+                }
+            }
+        }
+
+        public Task<float?> FetchCpuTemperatureAsync(CancellationToken cancellationToken = default)
+        {
+            if (_cachedCpuTemperature.HasValue)
+            {
+                return Task.FromResult(_cachedCpuTemperature);
             }
 
-            return null;
+            PollSensors();
+            return Task.FromResult(_cachedCpuTemperature);
         }
 
-        private static bool TryParseTemperature(string raw, out float temp)
+        private void PollSensors()
         {
-            temp = 0;
-            if (string.IsNullOrWhiteSpace(raw)) return false;
+            float? cpuTemp = null;
+            float? gpuTemp = null;
 
-            string cleaned = raw.Split(' ')[0].Trim();
-            return float.TryParse(cleaned, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out temp);
-        }
-
-        private float? FetchFromWmi()
-        {
-            try
+            lock (_pollLock)
             {
-                using var searcher = new ManagementObjectSearcher(@"root\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
-                foreach (ManagementObject obj in searcher.Get())
+                if (_computer != null)
                 {
-                    double kelvinTimes10 = Convert.ToDouble(obj["CurrentTemperature"]);
-                    double celsius = (kelvinTimes10 / 10.0) - 273.15;
-                    if (celsius > 10 && celsius < 120)
+                    try
                     {
-                        return (float)Math.Round(celsius, 1);
+                        // 1. Primary: AMD Ryzen 5 7600X CPU SMU / MSR sensors
+                        var cpuHardware = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+                        if (cpuHardware != null)
+                        {
+                            cpuHardware.Update();
+                            foreach (var sub in cpuHardware.SubHardware)
+                            {
+                                sub.Update();
+                            }
+                            var temp = ExtractCpuTemperature(cpuHardware);
+                            if (temp.HasValue && temp.Value >= 5.0f && temp.Value <= 115.0f)
+                            {
+                                cpuTemp = temp;
+                            }
+                        }
+
+                        // 2. Fallback 1: AMD Zen 4 integrated GPU (AMD Radeon(TM) Graphics) on the exact same CPU package!
+                        // Reports 'GPU VR SoC' or 'GPU Core' (typically 42°C-50°C) without needing kernel driver!
+                        if (!cpuTemp.HasValue)
+                        {
+                            var amdIgpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuAmd && h.Name.Contains("Radeon", StringComparison.OrdinalIgnoreCase));
+                            if (amdIgpu != null)
+                            {
+                                amdIgpu.Update();
+                                foreach (var sub in amdIgpu.SubHardware) sub.Update();
+                                var temp = ExtractAmdIgpuSocTemp(amdIgpu);
+                                if (temp.HasValue && temp.Value >= 5.0f && temp.Value <= 115.0f)
+                                {
+                                    cpuTemp = temp;
+                                }
+                            }
+                        }
+
+                        // 3. Fallback 2: Motherboard SuperIO (e.g. ITE IT8689E) CPU sensor
+                        if (!cpuTemp.HasValue)
+                        {
+                            var mobo = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Motherboard);
+                            if (mobo != null)
+                            {
+                                mobo.Update();
+                                foreach (var sub in mobo.SubHardware) sub.Update();
+                                var temp = ExtractMotherboardCpuTemp(mobo);
+                                if (temp.HasValue && temp.Value >= 5.0f && temp.Value <= 115.0f)
+                                {
+                                    cpuTemp = temp;
+                                }
+                            }
+                        }
+
+                        // 4. GPU Polling: Strictly prioritize dedicated NVIDIA GeForce RTX 3070 over integrated AMD Radeon graphics
+                        var gpuHardware = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuNvidia)
+                                       ?? _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuAmd && !h.Name.Contains("Radeon", StringComparison.OrdinalIgnoreCase))
+                                       ?? _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.GpuIntel);
+                        if (gpuHardware != null)
+                        {
+                            gpuHardware.Update();
+                            foreach (var sub in gpuHardware.SubHardware)
+                            {
+                                sub.Update();
+                            }
+                            if (!string.IsNullOrEmpty(gpuHardware.Name))
+                            {
+                                _gpuName = CleanGpuName(gpuHardware.Name);
+                            }
+                            var temp = ExtractGpuTemperature(gpuHardware);
+                            if (temp.HasValue && temp.Value >= 10.0f && temp.Value <= 120.0f)
+                            {
+                                gpuTemp = temp;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[HardwareMonitor] Native sensor poll error: {ex.Message}");
                     }
                 }
             }
-            catch
+
+            // If CPU temperature is still unavailable, attempt a clean background reopen instead of latching onto fake values
+            if (!cpuTemp.HasValue)
             {
-                // WMI ThermalZone not supported on all motherboards
+                TryReopenComputerIfStale();
             }
 
+            bool active = false;
+
+            if (cpuTemp.HasValue && cpuTemp.Value >= 5.0f)
+            {
+                if (!_smoothedCpuTemperature.HasValue)
+                {
+                    _smoothedCpuTemperature = cpuTemp.Value;
+                }
+                else
+                {
+                    // Fast surge response if temperature increases by > 3°C
+                    float delta = cpuTemp.Value - _smoothedCpuTemperature.Value;
+                    float alpha = delta > 3.0f ? 0.85f : SmoothingAlpha;
+                    _smoothedCpuTemperature = (_smoothedCpuTemperature.Value * (1.0f - alpha)) + (cpuTemp.Value * alpha);
+                }
+
+                float finalCpu = (float)Math.Round(_smoothedCpuTemperature.Value, 1);
+                _cachedCpuTemperature = finalCpu;
+                CpuTemperatureUpdated?.Invoke(finalCpu);
+                TemperatureUpdated?.Invoke(finalCpu);
+                active = true;
+            }
+
+            if (gpuTemp.HasValue && gpuTemp.Value >= 5.0f)
+            {
+                if (!_smoothedGpuTemperature.HasValue)
+                {
+                    _smoothedGpuTemperature = gpuTemp.Value;
+                }
+                else
+                {
+                    float delta = gpuTemp.Value - _smoothedGpuTemperature.Value;
+                    float alpha = delta > 3.0f ? 0.85f : SmoothingAlpha;
+                    _smoothedGpuTemperature = (_smoothedGpuTemperature.Value * (1.0f - alpha)) + (gpuTemp.Value * alpha);
+                }
+
+                float finalGpu = (float)Math.Round(_smoothedGpuTemperature.Value, 1);
+                _cachedGpuTemperature = finalGpu;
+                GpuTemperatureUpdated?.Invoke(finalGpu);
+                active = true;
+            }
+
+            SetStatus(active);
+        }
+
+        private static float? ExtractCpuTemperature(IHardware cpuHardware)
+        {
+            var candidates = new List<ISensor>();
+
+            void CollectSensors(IHardware hw)
+            {
+                foreach (var s in hw.Sensors)
+                {
+                    if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value >= 5.0f && s.Value.Value <= 115.0f)
+                    {
+                        candidates.Add(s);
+                    }
+                }
+                foreach (var sub in hw.SubHardware)
+                {
+                    CollectSensors(sub);
+                }
+            }
+
+            CollectSensors(cpuHardware);
+
+            if (candidates.Count == 0) return null;
+
+            // Target AMD Ryzen 5 7600X: prioritize Core (Tctl/Tdie), CCD1 (Tdie), CPU Package, Core Average
+            var sensor = candidates.FirstOrDefault(s => (s.Name.Contains("Core (Tctl/Tdie)", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("Tctl/Tdie", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("Tctl", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("Tdie", StringComparison.OrdinalIgnoreCase)) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null) return (float)Math.Round(sensor.Value!.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => s.Name.Contains("CCD", StringComparison.OrdinalIgnoreCase) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null) return (float)Math.Round(sensor.Value!.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => (s.Name.Contains("CPU Package", StringComparison.OrdinalIgnoreCase) ||
+                                                    s.Name.Contains("Package", StringComparison.OrdinalIgnoreCase)) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null) return (float)Math.Round(sensor.Value!.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => (s.Name.Contains("Core Average", StringComparison.OrdinalIgnoreCase) ||
+                                                    s.Name.Contains("Average", StringComparison.OrdinalIgnoreCase)) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null) return (float)Math.Round(sensor.Value!.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null) return (float)Math.Round(sensor.Value!.Value, 1);
+
+            return (float)Math.Round(candidates[0].Value!.Value, 1);
+        }
+
+        private static float? ExtractAmdIgpuSocTemp(IHardware igpu)
+        {
+            var candidates = new List<ISensor>();
+            void Collect(IHardware h)
+            {
+                foreach (var s in h.Sensors)
+                {
+                    if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value >= 5.0f && s.Value.Value <= 115.0f)
+                    {
+                        candidates.Add(s);
+                    }
+                }
+                foreach (var sub in h.SubHardware) Collect(sub);
+            }
+            Collect(igpu);
+            if (candidates.Count == 0) return null;
+
+            var sensor = candidates.FirstOrDefault(s => (s.Name.Contains("VR SoC", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("SoC", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase)) && s.Value.HasValue && s.Value.Value >= 5.0f);
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
+            return (float)Math.Round(candidates[0].Value!.Value, 1);
+        }
+
+        private static float? ExtractMotherboardCpuTemp(IHardware mobo)
+        {
+            var candidates = new List<ISensor>();
+            void Collect(IHardware h)
+            {
+                foreach (var s in h.Sensors)
+                {
+                    if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value >= 5.0f && s.Value.Value <= 115.0f)
+                    {
+                        candidates.Add(s);
+                    }
+                }
+                foreach (var sub in h.SubHardware) Collect(sub);
+            }
+            Collect(mobo);
+            if (candidates.Count == 0) return null;
+
+            // Check for CPU sensor on SuperIO (IT8689E)
+            var sensor = candidates.FirstOrDefault(s => s.Name.Equals("CPU", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("CPU", StringComparison.OrdinalIgnoreCase));
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
+            // On IT8689E, Temperature #3 is typically CPU socket
+            sensor = candidates.FirstOrDefault(s => s.Name.Contains("Temperature #3", StringComparison.OrdinalIgnoreCase));
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
             return null;
+        }
+
+        private static float? ExtractGpuTemperature(IHardware gpuHardware)
+        {
+            var candidates = new List<ISensor>();
+
+            void CollectSensors(IHardware hw)
+            {
+                foreach (var s in hw.Sensors)
+                {
+                    if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0)
+                    {
+                        candidates.Add(s);
+                    }
+                }
+                foreach (var sub in hw.SubHardware)
+                {
+                    CollectSensors(sub);
+                }
+            }
+
+            CollectSensors(gpuHardware);
+
+            if (candidates.Count == 0) return null;
+
+            // Target NVIDIA GeForce RTX 3070: prioritize GPU Core
+            var sensor = candidates.FirstOrDefault(s => s.Name.Equals("GPU Core", StringComparison.OrdinalIgnoreCase) ||
+                                                        s.Name.Contains("GPU Core", StringComparison.OrdinalIgnoreCase));
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase));
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
+            sensor = candidates.FirstOrDefault(s => s.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase));
+            if (sensor != null && sensor.Value.HasValue) return (float)Math.Round(sensor.Value.Value, 1);
+
+            return (float)Math.Round(candidates[0].Value!.Value, 1);
+        }
+
+        private static string CleanGpuName(string rawName)
+        {
+            if (string.IsNullOrWhiteSpace(rawName)) return "NVIDIA RTX 3070";
+            return rawName.Replace("GeForce ", "").Trim();
+        }
+
+        private void SetStatus(bool running)
+        {
+            if (_isActive != running)
+            {
+                _isActive = running;
+                LhmStatusChanged?.Invoke(running);
+            }
+        }
+
+        public void Dispose()
+        {
+            _cts.Cancel();
+            try
+            {
+                _pollingTask?.Wait(TimeSpan.FromMilliseconds(500));
+            }
+            catch { }
+            _cts.Dispose();
+
+            lock (_pollLock)
+            {
+                try
+                {
+                    _computer?.Close();
+                }
+                catch { }
+                _computer = null;
+            }
         }
     }
 }

@@ -78,6 +78,19 @@ namespace ESPHomeFanController.Controls
             set => SetValue(ArcEndColorProperty, value);
         }
 
+        private Color _trackColor = Color.FromRgb(46, 41, 51);
+
+        public void SetTheme(Color trackColor, Color arcStart, Color arcEnd, Brush textPrimary, Brush textMuted)
+        {
+            _trackColor = trackColor;
+            ArcColor = arcStart;
+            ArcEndColor = arcEnd;
+            if (TxtValue != null) TxtValue.Foreground = textPrimary;
+            if (TxtTitle != null) TxtTitle.Foreground = textMuted;
+            if (TxtUnit != null) TxtUnit.Foreground = textMuted;
+            UpdateGauge();
+        }
+
         public CircularGauge()
         {
             InitializeComponent();
@@ -120,7 +133,7 @@ namespace ESPHomeFanController.Controls
             double totalSweep = 270.0;
 
             // 1. Background Arc
-            Path bgPath = CreateArcPath(center, radius, startAngle, startAngle + totalSweep, strokeWidth, new SolidColorBrush(Color.FromRgb(30, 41, 59)));
+            Path bgPath = CreateArcPath(center, radius, startAngle, startAngle + totalSweep, strokeWidth, new SolidColorBrush(_trackColor));
             DrawingCanvas.Children.Add(bgPath);
 
             // 2. Active Value Arc

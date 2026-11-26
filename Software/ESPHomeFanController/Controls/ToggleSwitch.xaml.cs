@@ -21,6 +21,21 @@ namespace ESPHomeFanController.Controls
             set => SetValue(IsCheckedProperty, value);
         }
 
+        private Color _activeTrackColor = Color.FromRgb(184, 155, 184);
+        private Color _inactiveTrackColor = Color.FromRgb(27, 23, 30);
+        private Color _activeBorderColor = Color.FromRgb(216, 180, 216);
+        private Color _inactiveBorderColor = Color.FromRgb(46, 41, 51);
+
+        public void SetTheme(Color activeTrack, Color inactiveTrack, Color activeBorder, Color inactiveBorder, Color knobColor)
+        {
+            _activeTrackColor = activeTrack;
+            _inactiveTrackColor = inactiveTrack;
+            _activeBorderColor = activeBorder;
+            _inactiveBorderColor = inactiveBorder;
+            if (Knob != null) Knob.Fill = new SolidColorBrush(knobColor);
+            UpdateVisualState(false);
+        }
+
         public ToggleSwitch()
         {
             InitializeComponent();
@@ -41,8 +56,8 @@ namespace ESPHomeFanController.Controls
             if (TrackBorder == null || Knob == null) return;
 
             double targetX = IsChecked ? 26 : 4;
-            Color trackColor = IsChecked ? Color.FromRgb(16, 185, 129) : Color.FromRgb(51, 65, 85);
-            Color borderColor = IsChecked ? Color.FromRgb(52, 211, 153) : Color.FromRgb(71, 85, 105);
+            Color trackColor = IsChecked ? _activeTrackColor : _inactiveTrackColor;
+            Color borderColor = IsChecked ? _activeBorderColor : _inactiveBorderColor;
 
             if (animate)
             {
